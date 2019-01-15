@@ -9,30 +9,21 @@
 import os
 import re
 import glob
-import pwlf
 import numpy as np
 import pandas as pd
 from datetime import date
-import uncertainties as unc
 import matplotlib.pyplot as plt
-import uncertainties.unumpy as unp
 from jdcal import jd2gcal, gcal2jd
-from scipy.optimize import minimize
-from numpy.polynomial import legendre as ls
 from matplotlib.ticker import MultipleLocator
-
-import seaborn as sns
-sns.set_style('ticks')
-# sns.set_palette(sns.color_palette('Paired', 10))
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Global Variables To Be Used In The Code
 # ------------------------------------------------------------------------------------------------------------------- #
-precision = 3
+precision = 2
 epoch = 2400000.5
-JD_offset = 2457600
+JD_offset = 2456700
 clip_epoch = 150
 
 filters = ['U', 'B', 'V', 'R', 'I']
@@ -41,19 +32,10 @@ colors = ['B-V', 'U-B', 'V-R', 'R-I', 'V-I']
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Details Of The SNe In Study (2016gfy)
+# Extinction Coefficients For Different Photometric Bands (For Rv = 3.1, Fitzpatrick(1999))
 # ------------------------------------------------------------------------------------------------------------------- #
-name_SN = '2016gfy'
-# EBV_mag = 0.0865
-# EBV_err = 0.0018
-EBV_mag = 0.21
-EBV_err = 0.11
-dist_val = 36.0
-dist_err = 2.5
-distmod_mag = 32.78
-distmod_err = 0.15
-redshift = 0.00806
-date_explosion = 2457641.20
+dict_R = {'U': 4.95, 'B': 4.27, 'V': 3.15, 'R': 2.65, 'I': 1.72,
+          'u': 5.02, 'g': 3.32, 'r': 2.37, 'i': 2.08, 'z': 1.54}
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -61,85 +43,43 @@ date_explosion = 2457641.20
 # Paths Of Directories
 # ------------------------------------------------------------------------------------------------------------------- #
 DIR_CURNT = os.getcwd()
-DIR_SNe = "/home/avinash/Dropbox/SNData/IIP_Data/"
+DIR_SNe = "/home/avinash/Dropbox/IIP_Data/LC_Data/"
 DIR_PHOT = "/home/avinash/Supernovae_Data/Photometry/"
-DIR_CODE = "/home/avinash/Dropbox/PyCharm/Reduction_Pipeline/"
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Data Containing Information On FILTERS and Other Type II SNe
-# Extinction Coefficients For Different Photometric Bands (For Rv = 3.1, Fitzpatrick(1999))
+# Details Of The SN In Study (ASASSN-14dq)
 # ------------------------------------------------------------------------------------------------------------------- #
-filter_df = pd.read_csv(DIR_CODE + 'FILTERS.dat', sep='\s+')
-filter_df = filter_df.replace('INDEF', np.nan).set_index(['FILTER', 'Marker', 'Color']).astype('float64')
-filter_df = filter_df.reset_index().set_index('FILTER')
-
-sndata_df = pd.read_csv(DIR_SNe + 'LC_Data/TypeIISNe.dat', sep='\s+', comment='#')
-sndata_df = sndata_df.replace('INDEF', np.nan).set_index(['Name', 'Marker', 'Color']).astype('float64')
-sndata_df = sndata_df.reset_index().set_index('Name')
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Function For Calculating Reduced ChiSquare
-# ------------------------------------------------------------------------------------------------------------------- #
-
-def redchisq(ydata, ymod, sd=np.empty(0), n=8):
-    """
-    Args:
-        ydata    : Observed data
-        ymod     : Model data
-          sd     : Uncertainties in ydata
-          n      : Number of free parameters in the model
-    Returns:
-        RedChiSq : Reduced Chi-Square
-    """
-    ydata = np.array(ydata)
-    ymod = np.array(ymod)
-    sd = np.array(sd)
-
-    if not sd.any():
-        chisq = np.sum((ydata - ymod) ** 2)
-    else:
-        chisq = np.sum(((ydata - ymod) / sd) ** 2)
-
-    nu = ydata.size - 1 - n
-    redchisq = chisq / nu
-
-    return redchisq
-
+name_SN = 'ASASSN-14dq'
+EBV_mag = 0.0601
+EBV_err = 0.0006
+dist_val = 44.80
+dist_err = 3.0
+distmod_mag = 33.25
+distmod_err = 0.15
+redshift = 0.010424
+date_explosion = 2456841.50
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Plot Confidence Intervals And Set Plot Parameters
+# Other SN Details
 # ------------------------------------------------------------------------------------------------------------------- #
-
-def plot_confintervals(ax_obj, optpar, covpar, xarr, fcolor='grey'):
-    """
-    Plots 3-Sigma Confidence Intervals in Fits of SN Parameters.
-    Args:
-        ax_obj  : Axes object on which the confidence interval is to be plotted
-        optpar  : Optimised Parameters of the Fit
-        covpar  : Covariance Parameters of the Fit
-        xarr    : Array of X-Values over which confidence intervals are to be plotted
-        fcolor  : Fill color for the confidence intervals
-    Returns:
-        None
-    """
-    coeff = unc.correlated_values(optpar, covpar)
-    func = ls.legval(xarr, coeff)
-    fit = unp.nominal_values(func)
-    sigma = unp.std_devs(func)
-
-    fitlow = fit - 3 * sigma
-    fithigh = fit + 3 * sigma
-
-    ax_obj.plot(xarr, fitlow, ls='-.', c='k', lw=0.7, alpha=0.3, label='_nolegend_')
-    ax_obj.plot(xarr, fithigh, ls='-.', c='k', lw=0.7, alpha=0.3, label='_nolegend_')
-    ax_obj.fill_between(xarr, fitlow, fithigh, facecolor=fcolor, alpha=0.3)
-
+# Leonard 1999em, Bose 2012aw, Bose 2013ej, Leonard 1999gi,
+# Sahu 2004et, Pastorello 2005cs, Bose 2013ab, Inserra 2009aw
+dict_explosion = {'1999em': 2451475.6, '2012aw': 2456002.59, '2013ej': 2456497.30, '1999gi': 2451518.22,
+                  '2004et': 2453270.25, '2005cs': 2453549.0, '2013ab': 2456340.0, '2009bw': 2454916.5}
+dict_maximum = {'1999em': 2451475.6, '2012aw': 2456002.59, '2013ej': 2456497.30, '1999gi': 2451518.22,
+                '2004et': 2453270.25, '2005cs': 2453549.0, '2013ab': 2456340.0, '2009bw': 2454925.3}
+dict_EBV = {'1999em': [0.10, 0.05], '2012aw': [0.07, 0.01], '2013ej': [0.06, 0.001], '1999gi': [0.21, 0.09],
+            '2004et': [0.41, 0.0], '2005cs': [0.05, 0.00], '2013ab': [0.044, 0.066], '2009bw': [0.31, 0.03]}
+dict_Mv = {'1999em': [-15.9, 0.2], '2012aw': [-16.67, 0.04], '2013ej': [-16.6, 0.1], '1999gi': [-16.4, 0.6],
+           '2004et': [-17.14, 0.0], '2005cs': [-15.2, 0.0], '2013ab': [-16.7, 0.0], '2009bw': [-16.87, 0.16]}
+dict_dist = {'1999em': [8.2, 0.6], '2012aw': [9.9, 0.1], '2013ej': [9.57, 0.70], '1999gi': [13.3, 0.6],
+             '2004et': [5.6, 0.1], '2005cs': [8.9, 0.5], '2013ab': [24.3, 1.0], '2009bw': [20.2, 1.5]}
+dict_snmark = {'1999em': ['o', 'c'], '2012aw': ['D', 'b'], '2013ej': ['>', 'g'], '1999gi': ['^', 'r'],
+               '2004et': ['x', 'orange'], '2005cs': ['*', 'y'], '2013ab': ['+', 'r'], '2009bw': ['X', 'violet']}
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -191,6 +131,7 @@ def display_text(text_to_display):
     print ("\n" + "# " + "-" * (12 + len(text_to_display)) + " #")
     print ("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
     print ("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
+
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -254,15 +195,35 @@ def add_series(list_series, sub=False, err=False):
     for series in list_series[1:]:
         if not err:
             if not sub:
-                append_data = [round(val_1 + val_2, int(precision)) if val_1 != 'INDEF' and val_2 != 'INDEF'
-                               else 'INDEF' for val_1, val_2 in zip(output_series, series)]
+                append_data = [val_1 + val_2 if val_1 != 'INDEF' and val_2 != 'INDEF' else 'INDEF'
+                               for val_1, val_2 in zip(output_series, series)]
             else:
-                append_data = [round(val_1 - val_2, int(precision)) if val_1 != 'INDEF' and val_2 != 'INDEF'
-                               else 'INDEF' for val_1, val_2 in zip(output_series, series)]
+                append_data = [val_1 - val_2 if val_1 != 'INDEF' and val_2 != 'INDEF' else 'INDEF'
+                               for val_1, val_2 in zip(output_series, series)]
         else:
-            append_data = [round((val_1 ** 2 + val_2 ** 2) ** 0.5, int(precision))
-                           if val_1 != 'INDEF' and val_2 != 'INDEF' else 'INDEF'
+            append_data = [round((val_1 ** 2 + val_2 ** 2) ** 0.5,
+                                 int(precision)) if val_1 != 'INDEF' and val_2 != 'INDEF' else 'INDEF'
                            for val_1, val_2 in zip(output_series, series)]
+
+        output_series = pd.Series(data=append_data, index=list_indices)
+
+    return output_series
+
+
+def add_errseries(list_series):
+    """
+    Adds multiple Pandas Series containing error data in quadrature and obtains a resultant Pandas Series.
+    Args:
+        list_series     : List of all Pandas Series to be added to obtain a single Pandas Series
+    Returns:
+        output_series   : Output Pandas Series obtained after adding all the series
+    """
+    output_series = list_series[0]
+    list_indices = output_series.index.values
+
+    for series in list_series[1:]:
+        append_data = [round((val_1 ** 2 + val_2 ** 2) ** 0.5, int(precision))
+                       for val_1, val_2 in zip(output_series, series)]
 
         output_series = pd.Series(data=append_data, index=list_indices)
 
@@ -305,11 +266,10 @@ def ubvriframe_to_colormagframe(input_df, err=False):
 
     for band in [x for x in filters if x in input_df.columns.values]:
         if not err:
-            input_df[band] = input_df[band].astype('float64') - filter_df.loc[band, 'RLambda'] * EBV_mag
+            input_df[band] = input_df[band].astype('float64') - dict_R[band] * EBV_mag
         else:
-            input_df[band] = input_df[band].astype('float64'). \
-                apply(lambda x: (x ** 2 + (filter_df.loc[band, 'RLambda'] * EBV_err) ** 2) ** 0.5)
-
+            input_df[band] = input_df[band].astype('float64').apply(lambda x: (x ** 2 +
+                                                                               (dict_R[band] * EBV_err) ** 2) ** 0.5)
     output_df['B-V'] = add_series([input_df['B'], input_df['V']], sub=True, err=err)
     output_df['U-B'] = add_series([input_df['U'], input_df['B']], sub=True, err=err)
     output_df['V-R'] = add_series([input_df['V'], input_df['R']], sub=True, err=err)
@@ -340,11 +300,11 @@ def calc_colormagframe(input_df, err=False):
         output_df['R-I'] = input_df['R'] - input_df['I']
         output_df['V-I'] = input_df['V'] - input_df['I']
     else:
-        output_df['B-V'] = add_series([input_df['B'], input_df['V']], err=True)
-        output_df['U-B'] = add_series([input_df['U'], input_df['B']], err=True)
-        output_df['V-R'] = add_series([input_df['V'], input_df['R']], err=True)
-        output_df['R-I'] = add_series([input_df['R'], input_df['I']], err=True)
-        output_df['V-I'] = add_series([input_df['V'], input_df['I']], err=True)
+        output_df['B-V'] = add_errseries([input_df['B'], input_df['V']])
+        output_df['U-B'] = add_errseries([input_df['U'], input_df['B']])
+        output_df['V-R'] = add_errseries([input_df['V'], input_df['R']])
+        output_df['R-I'] = add_errseries([input_df['R'], input_df['I']])
+        output_df['V-I'] = add_errseries([input_df['V'], input_df['I']])
 
     output_df[colors] = output_df[colors].apply(pd.to_numeric, errors='coerce').round(int(precision))
 
@@ -356,27 +316,27 @@ def get_colorframe(name, data_df):
     Converts a column-wise magnitude Pandas DataFrame to a row-wise Pandas DataFrame.
     Args:
         name        : Name of the SNe whose data is read
-        data_df     : Input Pandas DataFrame with column-wise magnitudes
+        data_df     : Input Pandas DataFrame
     Returns:
-        mag_df      : Output Pandas DataFrame with color terms
-        err_df      : Output Pandas DataFrame with errors on color terms
+        output_df   : Output Pandas DataFrame
     """
     data_df = data_df.set_index('JD')
     mag_df = data_df[[x for x in data_df.columns.values if 'Err' not in x]].copy()
     err_df = data_df[['Date', 'Phase'] + [x for x in data_df.columns.values if 'Err' in x]].copy()
     err_df = err_df.rename(columns=lambda x: x.strip('Err'))
 
-    for band in filters:
-        if band not in data_df.columns.values:
-            mag_df[band] = np.nan
-            err_df[band] = np.nan
-        else:
-            mag_df[band] = mag_df[band].astype('float64') - filter_df.loc[band, 'RLambda'] * sndata_df.loc[name, 'EBV']
+    for band in [x for x in filters if x not in data_df.columns.values]:
+        mag_df[band] = np.nan
+        err_df[band] = np.nan
+
+    for band in [x for x in filters if x in mag_df.columns.values]:
+        mag_df[band] = mag_df[band].astype('float64') - dict_R[band] * dict_EBV[name][0]
 
     mag_df = calc_colormagframe(mag_df)
     err_df = calc_colormagframe(err_df, err=True)
 
     return mag_df, err_df
+
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -397,14 +357,12 @@ def plot_color(ax_obj, input_df, name, color):
         None
     """
     mag_df, err_df = get_colorframe(name, input_df)
+    if color == 'U-B':
+        mag_df = mag_df[mag_df['Phase'] < 100]
     color_mag = mag_df.set_index('Phase')[color].dropna()
 
-#     ax_obj.plot(color_mag.index.values, color_mag.values, marker=sndata_df.loc[name, 'Marker'], ms=8, ls='',
-#                 c=sndata_df.loc[name, 'Color'], alpha=0.8, label=name)
-    ax_obj.plot(color_mag.index.values, color_mag.values, marker=sndata_df.loc[name, 'Marker'], c='k', ms=8,
-                lw=0.9, ls='--', markerfacecolor='None', markeredgewidth=1, alpha=0.6, label='_nolegend_')
-    ax_obj.plot(color_mag.index.values, color_mag.values, marker=sndata_df.loc[name, 'Marker'], ms=8, ls='',
-                alpha=0.7, label=name)
+    ax_obj.plot(color_mag.index.values, color_mag.values, marker=dict_snmark[name][0], c=dict_snmark[name][1],
+                markersize=6, linestyle='-.', label=name, markerfacecolor='None')
 
 
 def plot_sncolor(ax_obj, inpmag_df, inperr_df, color):
@@ -418,55 +376,13 @@ def plot_sncolor(ax_obj, inpmag_df, inperr_df, color):
     Returns:
         None
     """
-    x = inpmag_df[color].dropna().index.values
-    y = inpmag_df[color].dropna().values
-    yerr = inperr_df[color].dropna().values
+    color_mag = inpmag_df[color].dropna()
+    color_err = inperr_df[color].dropna()
 
-    number_segments = 3
-    myPWLF = pwlf.PiecewiseLinFit(x, y, sorted_data=True)
-    myPWLF.fit(number_segments)
-
-    xarr = np.arange(min(x), max(x), 0.5)
-    xbreaks = [np.min(x)] + dict_colors[color][0] + [np.max(x)]
-    fit = myPWLF.fit_with_breaks(xbreaks)
-    yfit = myPWLF.predict(xarr)
-    fitsigma = np.sqrt(myPWLF.prediction_variance(xarr))
-    yticks = ax_obj.get_yticks(minor=True)
-
-    print "{0} Color".format(color)
-    print "Number of Parameters: {0}".format(myPWLF.n_parameters)
-    print "Manual Fit: ", myPWLF.slopes * 100
-    print redchisq(y, myPWLF.predict(x), n=myPWLF.n_parameters)
-
-    for xbreak in dict_colors[color][0]:
-        ax_obj.axvline(xbreak, ls='--', lw=0.8, c='k')
-        if color in ['B-V', 'U-B']:
-            ax_obj.text(xbreak + 1, yticks[10], r'$\sim${:.0f} d'.format(xbreak), rotation=90, color='b', fontsize=13)
-        else:
-            ax_obj.text(xbreak + 1, yticks[-4], r'$\sim${:.0f} d'.format(xbreak), rotation=90, color='b', fontsize=13)
-
-    s1 = (myPWLF.slopes)[0]
-    s2 = (myPWLF.slopes)[1]
-
-    ax_obj.text((xbreaks[0] + xbreaks[1]) * 0.2, yticks[2], '$s_1$={:.2f}'.format(s1 * 100), color='r', fontsize=13)
-    ax_obj.text((xbreaks[1] + xbreaks[2]) * 0.4, yticks[2], '$s_2$={:.2f}'.format(s2 * 100), color='r', fontsize=13)
-    ax_obj.annotate(r'$\rm (' + color + ')_0$', xy=(1, 0), xycoords='axes fraction', fontsize=16, xytext=(-10, 10),
-                    textcoords='offset points', ha='right', va='bottom')
-
-    coeff = ls.legfit(x, y, 5)
-    ax_obj.plot(x, ls.legval(x, coeff), lw=2, ls='--', c='r', label='_nolegend_')
-    ax_obj.plot(x, y, ls='', lw=1, marker='o', c='k', ms=9, markerfacecolor='dimgrey', markeredgewidth=2,
-                alpha=0.6, label=name_SN)
-    ax_obj.plot(x, y, ls='', marker='o', c='k', ms=4, markerfacecolor='None', markeredgewidth=1,
-                alpha=0.8, label='_nolegend_')
-    ax_obj.fill_between(xarr, yfit - (fitsigma * 3), yfit + (fitsigma * 3), alpha=0.3, color='red')
-    ax_obj.plot(xarr, yfit, ls='-', lw=3, c='blue', label='_nolegend_')
-
-    data_legfit = pd.DataFrame(index=xarr)
-    data_legfit.index.name = 'Phase'
-    data_legfit['Color'] = np.round(ls.legval(xarr, coeff), 3)
-    data_legfit['ColorErr'] = np.round(fitsigma, 3)
-    data_legfit.to_csv('OUTPUT_InterpColor{0}'.format(color), sep=' ', index=True, header=True)
+    ax_obj.scatter(color_mag.index.values, color_mag.values, marker='*', c='k', s=40, alpha=0.5, label=name_SN)
+    ax_obj.errorbar(color_mag.index.values, color_mag.values, yerr=color_err.values, marker='*', c='k', markersize=7,
+                    alpha=0.5, linestyle='-', capsize=2, capthick=1, label=None)
+    ax_obj.set_ylabel(r'$\rm (' + color + ')_0$', fontsize=14, labelpad=4)
 
 
 def set_plotparams(ax_obj):
@@ -479,92 +395,101 @@ def set_plotparams(ax_obj):
     """
     ax_obj.yaxis.set_ticks_position('both')
     ax_obj.xaxis.set_ticks_position('both')
-    ax_obj.yaxis.set_major_locator(MultipleLocator(0.5))
-    ax_obj.yaxis.set_minor_locator(MultipleLocator(0.05))
+    ax_obj.yaxis.set_major_locator(MultipleLocator(0.50))
+    ax_obj.yaxis.set_minor_locator(MultipleLocator(0.125))
     ax_obj.xaxis.set_major_locator(MultipleLocator(50))
-    ax_obj.xaxis.set_minor_locator(MultipleLocator(5))
-    ax_obj.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=16)
-    ax_obj.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=16)
-
-# ------------------------------------------------------------------------------------------------------------------- #
+    ax_obj.xaxis.set_minor_locator(MultipleLocator(10))
+    ax_obj.tick_params(which='major', direction='in', length=6, width=1, labelsize=12)
+    ax_obj.tick_params(which='minor', direction='in', length=3, width=1, labelsize=12)
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Read Other Type II SNe Data From The SN Archive Folder
+
+
 # ------------------------------------------------------------------------------------------------------------------- #
-list_files = group_similar_files('', DIR_SNe + 'LC_Data/*.asc')
+# Read Other SNe Data From Archive Folder
+# ------------------------------------------------------------------------------------------------------------------- #
+list_files = group_similar_files('', DIR_SNe + '*.asc')
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Tabulate The Photometric Data Epoch-Wise Onto An Output File
 # ------------------------------------------------------------------------------------------------------------------- #
-data_df = pd.read_csv('OUTPUT_FinalSNMagTemp', sep='\s+', engine='python')
+data_df = pd.read_csv('OUTPUT_FinalSNMag', sep='\s+', engine='python')
 
 data_df['Date'] = data_df['JD'].apply(lambda x: jd_to_cald(x))
 data_df['Phase'] = (data_df['JD'] - date_explosion).round(int(precision))
-data_df['Mag'] = data_df['FMAG'].apply(lambda x: "{:.2f}".format(x)) + r"$\pm$" + data_df['FERR'].apply(lambda x: "{:.2f}".format(x))
+data_df['Mag'] = data_df['FMAG'].apply(lambda x: "{:.2f}".format(x)) + r"$\pm$" + \
+                 data_df['FERR'].apply(lambda x: "{:.2f}".format(x))
+
+tabular_df = data_df[['FILTER', 'Date', 'JD', 'Phase', 'Mag']]
+tabular_df.to_csv('OUTPUT_FinalTabularSNMag', sep=' ', index=False)
+display_text("Magnitudes For Supernova Have Been Tabulated Epoch-Wise")
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Output The Photometric Magnitudes Onto A Latex Table
+# ------------------------------------------------------------------------------------------------------------------- #
 data_df = data_df.set_index('Date')
+table_df = unorgframe_to_orgframe(data_df, column='Mag')
+
+table_df['Phase'] = table_df['Date'].apply(lambda x: data_df.loc[data_df.index == x, 'Phase'].iloc[0])
+table_df['JD'] = table_df['Phase'] + date_explosion - JD_offset
+table_df['Phase'] = table_df['Phase'].apply(lambda x: "{:.2f}".format(x) if x < 0 else "+{:.2f}".format(x))
+table_df = table_df.sort_values(by='Phase')
+
+table_df = table_df[['Date', 'JD', 'Phase', 'U', 'B', 'V', 'R', 'I']]
+table_df = table_df.rename(columns={'Phase': 'Phase$^*$', 'U': '$U$', 'B': '$B$', 'V': '$V$', 'R': '$R$', 'I': '$I$'})
+table_df = table_df.replace(np.nan, '---', regex=True)
+table_df.to_latex('photsn.tex', escape=False, index=False)
+display_text("Photometric Magnitudes (Epoch-Wise) For Supernova Have Been Written Onto A Latex File")
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Get Color Terms From UBVRI Photometric Magnitudes
 # ------------------------------------------------------------------------------------------------------------------- #
-data_df = data_df[data_df.index != '2017-01-10']
 snmag_df = ubvriframe_to_colormagframe(unorgframe_to_orgframe(data_df, column='FMAG'))
 snerr_df = ubvriframe_to_colormagframe(unorgframe_to_orgframe(data_df, column='FERR'), err=True)
 
 snmag_df = snmag_df[snmag_df['Phase'] < clip_epoch].set_index('Phase')
 snerr_df = snerr_df[snerr_df['Phase'] < clip_epoch].set_index('Phase')
 
-list_colors = ['U-B', 'B-V', 'V-R', 'V-I']
-dict_colors = {'U-B': [[39, 89], 1.0, 0.1, 15.2, 19.2], 'B-V': [[38, 92], 0.1, 0.01, 15.92, 16.38],
-               'V-R': [[39, 92], 0.1, 0.01, 15.6, 16.14], 'V-I': [[38, 92], 0.1, 0.01, 15.33, 15.97]}
-
-sns.set_palette(sns.color_palette('Dark2', 10)[5:9])
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12), sharex=True)
-
-for file_name in list_files:
-    name = file_name.split('/')[-1].split('.')[0]
-    if name in ['2005cs', '1999em', '2004et', '2013ab']:
-        datacomp_df = pd.read_csv(file_name, sep='\s+', comment='#', engine='python')
-        datacomp_df = datacomp_df.replace('INDEF', np.nan).sort_values(by='Phase')
-        datacomp_df = datacomp_df[datacomp_df['Phase'] < clip_epoch]
-        plot_color(ax1, datacomp_df, name, 'U-B')
-        plot_color(ax2, datacomp_df, name, 'B-V')
-        plot_color(ax3, datacomp_df, name, 'V-R')
-        plot_color(ax4, datacomp_df, name, 'V-I')
-
-ax1.set_ylim(-1.2, 1.9)
-ax2.set_ylim(-1.2, 1.9)
-
-ax3.set_ylim(-0.15, 1.4)
-ax4.set_ylim(-0.15, 1.4)
+fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(6, 12), sharex=True)
 
 set_plotparams(ax1)
-ax1.yaxis.set_minor_locator(MultipleLocator(0.1))
-plot_sncolor(ax1, snmag_df, snerr_df, color='U-B')
+plot_sncolor(ax1, snmag_df, snerr_df, color='B-V')
 
 set_plotparams(ax2)
-ax2.set_yticklabels([])
-ax2.yaxis.set_minor_locator(MultipleLocator(0.1))
-plot_sncolor(ax2, snmag_df, snerr_df, color='B-V')
+plot_sncolor(ax2, snmag_df, snerr_df, color='U-B')
 
 set_plotparams(ax3)
 plot_sncolor(ax3, snmag_df, snerr_df, color='V-R')
 
 set_plotparams(ax4)
-ax4.set_yticklabels([])
 plot_sncolor(ax4, snmag_df, snerr_df, color='V-I')
 
-ax4.set_xlim(-10, clip_epoch + 5)
-ax3.legend(fontsize=14, markerscale=1.7, loc=2, frameon=False)
-ax3.set_xlabel('Time Since Explosion [Days]', fontsize=16)
-ax4.set_xlabel('Time Since Explosion [Days]', fontsize=16)
+for file_name in list_files:
+    name = file_name.split('/')[-1].split('.')[0]
+    if name in ['1999em', '2004et', '2012aw', '2013ab', '2013ej']:
+        datacomp_df = pd.read_csv(file_name, sep='\s+', comment='#', engine='python')
+        datacomp_df = datacomp_df.replace('INDEF', np.nan).sort_values(by='Phase')
+        datacomp_df = datacomp_df[datacomp_df['Phase'] < clip_epoch]
+        plot_color(ax1, datacomp_df, name, 'B-V')
+        plot_color(ax2, datacomp_df, name, 'U-B')
+        plot_color(ax3, datacomp_df, name, 'V-R')
+        plot_color(ax4, datacomp_df, name, 'V-I')
 
-fig.subplots_adjust(hspace=0.01, wspace=0.01)
-fig.savefig('PLOT_ColorEvolution.pdf', format='pdf', dpi=2000, bbox_inches='tight')
+ax1.set_ylim(-0.3, 1.75)
+ax3.set_ylim(-0.1, 1.15)
+ax4.set_xlim(-5, 155)
+ax2.legend(fontsize=12, markerscale=2, loc='lower right')
+ax4.set_xlabel('Time Since Explosion [Days]', fontsize=14)
+
+fig.subplots_adjust(hspace=0.001, top=0.9, right=0.95)
+fig.savefig('OUTPUT_PlotColor.eps', format='eps', dpi=800, bbox_inches='tight')
 plt.show()
 plt.close(fig)
 # ------------------------------------------------------------------------------------------------------------------- #

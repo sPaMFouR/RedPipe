@@ -157,7 +157,7 @@ plt.close(fig)
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Plots 'Observational_Data' And The 'Best_Fit' Valenti Model
+# Plots 'Observational_Data' And The 'Best_Fit' Taddia Model
 # ------------------------------------------------------------------------------------------------------------------- #
 fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(9, 12), sharex=True)
 

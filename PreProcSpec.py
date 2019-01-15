@@ -261,7 +261,7 @@ def bias_subtract(textlist_tbs, master_bias, prefix_str='bs_'):
     Args:
         textlist_tbs    : Text list containing the filenames from which bias is to be subtracted
         master_bias     : Name of the master bias file
-        prefix_str      : Prefix to distinguish the aligned FITS file from the original FITS file
+        prefix_str      : Prefix to distinguish the output FITS file from the original FITS file
     Returns:
         None
     """
@@ -317,8 +317,8 @@ def crmedian(textlist_cosmic, clip_section, prefix_str='c'):
     task = iraf.noao.imred.crutil.crmedian
     task.unlearn()
 
-    task.lsigma = 25  # Low Clipping Sigma Factor
-    task.ncsig = 10  # Column Box Size For Sigma Calculation
+    task.lsigma = 25                                        # Low Clipping Sigma Factor
+    task.ncsig = 10                                         # Column Box Size For Sigma Calculation
 
     for file_name in list_cosmic:
         output_filename = prefix_str + file_name

@@ -351,21 +351,6 @@ def write_1dspec(ref_filename, flux_array, prefix_str):
 # Functions For Accessing & Manipulating Text File Data
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def read_file(file_name, title_rows=0):
-    """
-    Extracts the file data as a list of columns from a text file.
-    Args:
-        file_name   : Text file from which file data has to be extracted
-        title_rows  : No. of rows used for title description
-    Returns:
-        data_file   : List of all columns extracted from the text file
-    """
-    file_df = pd.read_csv(file_name, sep='\s+', header=None, skiprows=title_rows, engine='python').astype('float64')
-    data_file = [file_df.iloc[:, index].tolist() for index in range(0, file_df.shape[1])]
-
-    return data_file
-
-
 def read_specflux(file_name, file_specflux='OUTPUT_sbands'):
     """
     Reads spectroscopic fluxes from a text file 'file_specflux'. The fluxes are determined
@@ -405,16 +390,17 @@ def read_photflux(list_photfiles, julian_day, flux=True):
     dict_photmag = {}
     dict_photflux = {}
     for file_photmag in list_photfiles:
-        file_data = read_file(file_photmag, title_rows=1)
-        list_jd, list_mag = file_data
+        file_df = pd.read_csv(file_photmag, sep='\s+', engine='python').astype('float64')
+        file_df = file_df[abs(file_df['JD'] - float(julian_day)) <= 0.25]
 
-        for index in range(0, len(list_jd)):
-            if abs(float(list_jd[index]) - float(julian_day)) <= 0.25:
-                dict_photmag[filter_df.loc[file_photmag[-1], 'CentreWave']] = list_mag[index]
-                dict_photflux[filter_df.loc[file_photmag[-1], 'CentreWave']] = mag_to_flux(list_mag[index],
-                                                                                           file_band=file_photmag)
-                break
-
+        if file_df.shape[0] == 1:
+            dict_photmag[filter_df.loc[file_photmag[-1], 'CentreWave']] = file_df['Mag'].values[0]
+            dict_photflux[filter_df.loc[file_photmag[-1], 'CentreWave']] = mag_to_flux(file_df['Mag'].values[0],
+                                                                                       file_band=file_photmag)
+        else:
+            dict_photmag[filter_df.loc[file_photmag[-1], 'CentreWave']] = file_df['Mag'].mean()
+            dict_photflux[filter_df.loc[file_photmag[-1], 'CentreWave']] = mag_to_flux(file_df['Mag'].mean(),
+                                                                                       file_band=file_photmag)
     if flux:
         return dict_photflux
     else:
@@ -448,7 +434,7 @@ def get_zflux(dict_phot, cntrl_wav=7500):
     Returns:
         dict_phot   : Modified dictionary with Z-band flux value included
     """
-    data_series = pd.Series(dict_phot)
+    data_series = pd.Series(dict_phot, dtype='float64').dropna()
     spline = CubicSpline(data_series.index.values, data_series.values, bc_type='natural', extrapolate=True)
     dict_phot[int(cntrl_wav)] = '{0:6.4e}'.format(float(spline(int(cntrl_wav))))
 
@@ -531,15 +517,15 @@ def scale_spectra(common_text, list_photfiles, prefix_str='f', plot=False):
         dict_scale = dict((key, str(float(dict_phot[key]) / float(dict_spec[key]))) for key in dict_phot.keys() if
                           key in dict_spec.keys())
 
-        if len(dict_scale.keys()) > 3:
-            del dict_scale[7500]
+#         if len(dict_scale.keys()) > 3:
+#             del dict_scale[7500]
 
         # if len(dict_scale.keys()) > 4:
         #     order = 4
         # else:
         #     order = len(dict_scale.keys()) - 1
 
-        series = pd.Series(dict_scale, dtype='float64')
+        series = pd.Series(dict_scale, dtype='float64').dropna()
         spline = CubicSpline(series.index.values, series.values, bc_type='natural', extrapolate=True)
         spline2 = Rbf(series.index.values, series.values)
 
@@ -578,7 +564,7 @@ for path in list_paths:
 # ------------------------------------------------------------------------------------------------------------------- #
 # Copies Files Needed For Flux Calibration (sp_*.asc) And Supernova Magnitudes To The Current Working Directory
 # ------------------------------------------------------------------------------------------------------------------- #
-copy_files(inp_path=DIR_HOME, out_path=DIR_SPEC, common_text='Filter_*.asc', exceptions='BPF,SDSS')
+# copy_files(inp_path=DIR_HOME, out_path=DIR_SPEC, common_text='Filter_*.asc', exceptions='BPF,SDSS')
 copy_files(inp_path=DIR_PHOT, out_path=DIR_SPEC, common_text='OUTPUT_InterpSNMag*', exceptions='Row,Col')
 # ------------------------------------------------------------------------------------------------------------------- #
 

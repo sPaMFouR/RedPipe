@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
-# xxxxxxxxxxxxxxxxx-------------------------FLUX CALIBRATION OF 1-D Spectra----------------------xxxxxxxxxxxxxxxxxxxx #
+# xxxxxxxxxxxxxxxxx-------------------------FLUX CALIBRATION OF 1-D SPECTRA----------------------xxxxxxxxxxxxxxxxxxxx #
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -18,7 +18,7 @@ from pyraf import iraf
 from astropy.io import fits
 import matplotlib.pyplot as plt
 import specutils.io.read_fits as spec
-from scipy.interpolate import CubicSpline, Rbf
+from scipy.interpolate import CubicSpline
 from astropy.convolution import convolve, Gaussian1DKernel, Box1DKernel
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -33,9 +33,34 @@ data_max = 55000
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
+# Central Wavelengths Of Different Filters
+# ------------------------------------------------------------------------------------------------------------------- #
+dict_centralwav = {'U': 3700, 'B': 4200, 'V': 5300, 'R': 6000, 'I': 8050,
+                   'u': 3655, 'g': 5105, 'r': 6480, 'i': 7105, 'z': 8640, 'Z': 7500}
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Zero Point Correction For Different Photometric Bands
+# ------------------------------------------------------------------------------------------------------------------- #
+dict_zp = {'U': -0.152, 'B': -0.602, 'V': 0.000, 'R': 0.555, 'I': 1.271,
+           'u': -0.002, 'g': -0.455, 'r': 0.393, 'i': 1.028, 'z': 1.577}
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
 # Image Header Keywords
 # ------------------------------------------------------------------------------------------------------------------- #
 JD_keyword = 'JD'
+RA_keyword = 'RA'
+DEC_keyword = 'DEC'
+date_keyword = 'DATE-OBS'
+grism_keyword = 'GRISM'
+filter_keyword = 'IFILTER'
+object_keyword = 'OBJECT'
+airmass_keyword = 'AIRMASS'
+exptime_keyword = 'EXPTIME'
+time_start_keyword = 'TM_START'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -43,11 +68,11 @@ JD_keyword = 'JD'
 # Paths Of Files & Directories To Be Used
 # ------------------------------------------------------------------------------------------------------------------- #
 DIR_CURNT = os.getcwd()
-DIR_HOME = "/home/avinash/Dropbox/PyCharm/Reduction_Pipeline/"
-DIR_PHOT = "/home/avinash/Supernovae_Data/2016gfy/Photometry/"
-DIR_SPEC = "/home/avinash/Supernovae_Data/2016gfy/Spectroscopy/"
-FILE_BANDPASS = os.path.join(DIR_SPEC, 'Filter_BPF.asc')
-list_paths = [DIR_HOME, DIR_PHOT, DIR_SPEC, FILE_BANDPASS]
+DIR_HOME = "/home/Avinash/Dropbox/PyCharm/Reduction_Pipeline/"
+DIR_PHOT = "/home/Avinash/Supernovae_Data/Photometry/"
+DIR_SPECS = "/home/Avinash/Supernovae_Data/Final_Spectra/"
+FILE_BANDPASS = os.path.join(DIR_HOME, "Filter_BPF.asc")
+list_paths = [DIR_HOME, DIR_PHOT, DIR_SPECS, FILE_BANDPASS]
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -62,31 +87,12 @@ iraf.onedspec(_doprint=0)
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Data Containing Information On FILTERS
-# Extinction Coefficients For Different Photometric Bands (For Rv = 3.1, Fitzpatrick(1999))
-# ------------------------------------------------------------------------------------------------------------------- #
-filter_df = pd.read_csv(DIR_HOME + 'FILTERS.dat', sep='\s+')
-filter_df = filter_df.set_index('FILTER')
-list_filters = filter_df.index.tolist()
-
-for index, row in filter_df.iterrows():
-    if row['Offset'] > 0:
-        filter_df.loc[index, 'Label'] = index + ' + ' + str(row['Offset'])
-    elif row['Offset'] == 0:
-        filter_df.loc[index, 'Label'] = index
-    else:
-        filter_df.loc[index, 'Label'] = index + ' - ' + str(abs(row['Offset']))
-
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
 # Functions For File Handling
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def remove_file(file_name):
     """
-    Removes the file 'file_name' in the constituent directory.
+    Removes the file "file_name" in the constituent directory.
     Args:
          file_name  : Name of the file to be removed from the current directory
     Returns:
@@ -100,7 +106,7 @@ def remove_file(file_name):
 
 def remove_similar_files(common_text):
     """
-    Removes similar files based on the string 'common_text'.
+    Removes similar files based on the string "common_text".
     Args:
         common_text : String containing partial name of the files to be deleted
     Returns:
@@ -112,7 +118,7 @@ def remove_similar_files(common_text):
 
 def group_similar_files(text_list, common_text, exceptions=''):
     """
-    Groups similar files based on the string 'common_text'. Writes the similar files
+    Groups similar files based on the string "common_text". Writes the similar files
     onto the list 'text_list' (only if this string is not empty) and appends the similar
     files to a list 'python_list'.
     Args:
@@ -127,7 +133,7 @@ def group_similar_files(text_list, common_text, exceptions=''):
         list_exception = exceptions.split(',')
         for file_name in glob.glob(common_text):
             for text in list_exception:
-                test = re.search(text, file_name)
+                test = re.search(str(text), file_name)
                 if test:
                     try:
                         list_files.remove(file_name)
@@ -136,32 +142,33 @@ def group_similar_files(text_list, common_text, exceptions=''):
 
     list_files.sort()
     if len(text_list) != 0:
-        with open(text_list, 'w') as f:
-            for file_name in list_files:
-                f.write(file_name + '\n')
+        with open(str(text_list), "w") as f:
+            for index in range(0, len(list_files)):
+                f.write(str(list_files[index]) + "\n")
 
     return list_files
 
 
-def copy_files(inp_path, out_path, common_text, exceptions=''):
+def copy_files(in_path, out_path, common_text, exceptions=''):
     """
-    Copies similar files based on the string 'common_text' from the directory specified by 'inp_path'
-    onto the directory specified by 'out_path'.
+    Copies similar files based on the string "common_text" from the directory specified by "in_path"
+    onto the directory specified by "out_path".
     Args:
-        inp_path    : Path of the directory from which files are to be copied
+        in_path     : Path of the directory from which files are to be copied
         out_path    : Path of the directory to which files are to be copied
         common_text : String containing partial name of the files to be copied
         exceptions  : String containing the partial name of the files that need to be excluded
     Returns:
         None
     """
-    os.chdir(inp_path)
+    owd = os.getcwd()
+    os.chdir(str(in_path))
 
-    list_copy = group_similar_files('', common_text=common_text, exceptions=exceptions)
+    list_copy = group_similar_files("", common_text=str(common_text), exceptions=str(exceptions))
     for file_name in list_copy:
-        shutil.copy(os.path.join(inp_path, file_name), out_path)
+        shutil.copy(os.path.join(str(in_path), str(file_name)), str(out_path))
 
-    os.chdir(DIR_CURNT)
+    os.chdir(owd)
 
 
 def text_list_to_python_list(text_list):
@@ -175,11 +182,11 @@ def text_list_to_python_list(text_list):
         Error : File 'text_list 'Not Found
     """
     if os.path.isfile(text_list):
-        with open(text_list, 'r+') as f:
+        with open(text_list, "r+") as f:
             python_list = f.read().split()
             return python_list
     else:
-        print ("\nError : File '{0}' Not Found\n".format(text_list))
+        print ("\nError : File '{0}' Not Found\n".format(str(text_list)))
         sys.exit(1)
 
 
@@ -192,9 +199,9 @@ def python_list_to_text_list(python_list, text_list):
     Returns:
         None
     """
-    with open(text_list, 'w') as f:
+    with open(str(text_list), "w") as f:
         for element in python_list:
-            f.write(element + '\n')
+            f.write(str(element) + "\n")
 
 
 def list_lists_to_list(list_lists, text_list):
@@ -208,12 +215,11 @@ def list_lists_to_list(list_lists, text_list):
     """
     list_name = []
     for file_name in list_lists:
-        with open(file_name, 'r') as f:
+        with open(str(file_name), 'r') as f:
             file_list = f.read().split()
-            for element in file_list:
-                list_name.append(element)
-
-    python_list_to_text_list(list_name, text_list)
+            for elements in file_list:
+                list_name.append(str(elements))
+    python_list_to_text_list(list_name, str(text_list))
 
     return list_name
 
@@ -227,16 +233,16 @@ def check_ifexists(path):
         True        : Returns True only when the path exists
     """
     if path[-1] == '/':
-        if os.path.exists(path):
+        if os.path.exists(str(path)):
             pass
         else:
-            print ("\nError : Directory '{0}' Does Not Exist\n".format(path))
+            print ("\nError : Directory '{0}' Does Not Exist\n".format(str(path)))
 
     else:
         if os.path.isfile(str(path)):
             pass
         else:
-            print ("\nError : File '{0}' Does Not Exist\n".format(path))
+            print ("\nError : File '{0}' Does Not Exist\n".format(str(path)))
 
 
 def display_text(text_to_display):
@@ -251,6 +257,7 @@ def display_text(text_to_display):
     print ("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
     print ("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
 
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -258,7 +265,7 @@ def display_text(text_to_display):
 # Functions For Tasks In IRAF
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def sbands(common_text, output_file='OUTPUT_sbands'):
+def sbands(common_text, output_file="OUTPUT_sbands"):
     """
     Performs bandpass spectrophotometry of 1-D spectra.
     Args:
@@ -267,24 +274,23 @@ def sbands(common_text, output_file='OUTPUT_sbands'):
     Returns:
         None
     """
-    textlist_files = 'list_smspec'
-    group_similar_files(textlist_files, common_text=common_text)
+    text_list_files = "list_smspec"
+    group_similar_files(str(text_list_files), common_text=str(common_text))
 
     task = iraf.noao.onedspec.sbands
     task.unlearn()
 
-    task.normalize = 'yes'              # Normalize The Bandpasss Response?
-    task.mag = 'no'                     # Output Results In Magnitudes?
-    task.verbose = 'no'                 # Verbose Header?
-    task.magzero = '0'                  # Magnitude Zero Point
+    task.normalize = 'yes'  # Normalize The Bandpasss Response?
+    task.mag = 'no'  # Output Results In Magnitudes?
+    task.verbose = 'no'  # Verbose Header?
+    task.magzero = '0'  # Magnitude Zero Point
 
     if os.path.isfile(FILE_BANDPASS):
-        remove_file(output_file)
-        task(input='@' + textlist_files, output=output_file, bands=FILE_BANDPASS)
-        remove_file(textlist_files)
+        remove_file(str(output_file))
+        task(input='@' + str(text_list_files), output=str(output_file), bands=str(FILE_BANDPASS))
+        remove_file(str(text_list_files))
     else:
-        print ("\nError : '{0}' Does Not Exist\n".format(FILE_BANDPASS))
-
+        print ("\nError : '{0}' Does Not Exist\n".format(str(FILE_BANDPASS)))
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -315,14 +321,14 @@ def read_1dspec(file_name):
         wave_array   : Array containing wavelength values extracted from the 1-D Spectra
         flux_array   : Array containing flux values extracted from the 1-D Spectra
     """
-    with fits.open(file_name) as hdulist:
+    with fits.open(str(file_name)) as hdulist:
         axis = int(hdulist[0].header['NAXIS'])
         if axis == 1:
             flux_array = hdulist[0].data
-            wave_array = spec.read_fits_spectrum1d(file_name).dispersion
+            wave_array = spec.read_fits_spectrum1d(str(file_name)).dispersion
         else:
             flux_array = hdulist[0].data[0][0]
-            wave_array = spec.read_fits_spectrum1d(file_name)[0].dispersion
+            wave_array = spec.read_fits_spectrum1d(str(file_name))[0].dispersion
 
     return wave_array, flux_array
 
@@ -337,12 +343,13 @@ def write_1dspec(ref_filename, flux_array, prefix_str):
     Returns:
         None
     """
-    with fits.open(ref_filename) as hdulist:
+    with fits.open(str(ref_filename)) as hdulist:
         file_header = hdulist[0].header
 
-    output_filename = prefix_str + ref_filename
-    remove_file(output_filename)
-    fits.writeto(output_filename, data=flux_array, header=file_header)
+    output_filename = str(prefix_str) + str(ref_filename)
+    remove_file(str(output_filename))
+    fits.writeto(str(output_filename), data=flux_array, header=file_header)
+
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -360,16 +367,16 @@ def read_file(file_name, title_rows=0):
     Returns:
         data_file   : List of all columns extracted from the text file
     """
-    file_df = pd.read_csv(file_name, sep='\s+', header=None, skiprows=title_rows, engine='python').astype('float64')
+    file_df = pd.read_csv(filepath_or_buffer=file_name, sep="\s+", header=None, skiprows=title_rows, engine='python')
     data_file = [file_df.iloc[:, index].tolist() for index in range(0, file_df.shape[1])]
 
     return data_file
 
 
-def read_specflux(file_name, file_specflux='OUTPUT_sbands'):
+def read_specflux(file_name, file_specflux="OUTPUT_sbands"):
     """
-    Reads spectroscopic fluxes from a text file 'file_specflux'. The fluxes are determined
-    for the spectra specified by the file 'file_name'.
+    Reads spectroscopic fluxes from a text file "file_specflux". The fluxes are determined
+    for the spectra specified by the file "file_name"
     Args:
         file_name     : 1-D Spectra whose spectroscopic fluxes are to be extracted
         file_specflux : Text file from which spectroscopic fluxes are to be extracted
@@ -377,13 +384,13 @@ def read_specflux(file_name, file_specflux='OUTPUT_sbands'):
         dict_specflux : Dictionary of spectroscopic fluxes in different bands
     """
     sbands_columns = ['FileName', 'FILTER', 'Flux']
-    flux_df = pd.read_csv(file_specflux, header=None, names=sbands_columns, sep='\s+', engine='python')
-    flux_df['Flux'] = flux_df['Flux'].apply(lambda x: '{0:6.4e}'.format(x))
+    flux_df = pd.read_csv(file_specflux, header=None, names=sbands_columns, sep="\s+", engine='python')
+    flux_df['Flux'] = flux_df['Flux'].apply(lambda x: "{0:6.4E}".format(x))
 
     dict_specflux = {}
     for index, row in flux_df.iterrows():
-        if re.search(file_name, row['FileName']):
-            dict_specflux[filter_df.loc[row['FILTER'], 'CentreWave']] = row['Flux']
+        if re.search(str(file_name), row['FileName']):
+            dict_specflux[dict_centralwav[row['FILTER']]] = row['Flux']
 
     return dict_specflux
 
@@ -391,7 +398,7 @@ def read_specflux(file_name, file_specflux='OUTPUT_sbands'):
 def read_photflux(list_photfiles, julian_day, flux=True):
     """
     Reads broadband photometric magnitudes from a text list containing names of files containing
-    photometric magnitudes. The magnitudes are determined for the epoch specified by 'julian_day'.
+    photometric magnitudes. The magnitudes are determined for the epoch specified by "julian_day".
     Args:
         list_photfiles  : Text list of files containing different broadband photometric magnitudes
         julian_day      : Julian day close to which the photometric magnitude has to be extracted
@@ -400,19 +407,18 @@ def read_photflux(list_photfiles, julian_day, flux=True):
         dict_photmag    : Dictionary of photometric magnitudes in different bands
         dict_photflux   : Dictionary of photometric fluxes in different bands
     """
-    list_photfiles = text_list_to_python_list(list_photfiles)
+    list_photfiles = text_list_to_python_list(str(list_photfiles))
 
     dict_photmag = {}
     dict_photflux = {}
     for file_photmag in list_photfiles:
-        file_data = read_file(file_photmag, title_rows=1)
-        list_jd, list_mag = file_data
+        file_data = read_file(str(file_photmag), title_rows=1)
+        list_jd, list_mag = file_data[1:]
 
         for index in range(0, len(list_jd)):
             if abs(float(list_jd[index]) - float(julian_day)) <= 0.25:
-                dict_photmag[filter_df.loc[file_photmag[-1], 'CentreWave']] = list_mag[index]
-                dict_photflux[filter_df.loc[file_photmag[-1], 'CentreWave']] = mag_to_flux(list_mag[index],
-                                                                                           file_band=file_photmag)
+                dict_photmag[dict_centralwav[file_photmag[-1]]] = list_mag[index]
+                dict_photflux[dict_centralwav[file_photmag[-1]]] = mag_to_flux(list_mag[index], file_band=file_photmag)
                 break
 
     if flux:
@@ -430,8 +436,8 @@ def mag_to_flux(mag, file_band):
     Returns:
         flux        : Flux value corresponding to the input magnitude
     """
-    if file_band[-1] in filter_df.index.values.tolist():
-        flux = '{0:6.4e}'.format(10 ** (-0.4 * (mag + float(filter_df.loc[file_band[-1], 'ZeroPoint']) + 21.100)))
+    if file_band[-1] in dict_zp.keys():
+        flux = "{0:6.4e}".format(10 ** (-0.4 * (float(mag) + dict_zp[file_band[-1]] + 21.100)))
     else:
         print ("Error: Band Of Observation '{0}' Not Recognised".format(file_band[-1]))
         sys.exit(1)
@@ -450,7 +456,7 @@ def get_zflux(dict_phot, cntrl_wav=7500):
     """
     data_series = pd.Series(dict_phot)
     spline = CubicSpline(data_series.index.values, data_series.values, bc_type='natural', extrapolate=True)
-    dict_phot[int(cntrl_wav)] = '{0:6.4e}'.format(float(spline(int(cntrl_wav))))
+    dict_phot[int(cntrl_wav)] = "{0:6.4e}".format(float(spline(int(cntrl_wav))))
 
     return dict_phot
 
@@ -461,7 +467,7 @@ def get_zflux(dict_phot, cntrl_wav=7500):
 # Function For Smoothening Of 1-D Spectra
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def smooth_1dspec(common_text, sp=1.2, kernel='gaussian', prefix_str='z_', plot=False):
+def smooth_1dspec(common_text, sp=1.2, kernel="gaussian", prefix_str='z_', plot=False):
     """
     Smoothens a 1-D spectra based on the smoothening parameter. Smoothening parameter
     is 'std.dev.' in case of isotropic Gaussian filter and is 'width' in the case of the
@@ -475,33 +481,29 @@ def smooth_1dspec(common_text, sp=1.2, kernel='gaussian', prefix_str='z_', plot=
     Returns:
         None
     """
-    list_files = group_similar_files('', common_text=common_text)
+    list_files = group_similar_files("", common_text=str(common_text))
 
     for file_name in list_files:
-        wav_data, flux_data = read_1dspec(file_name)
+        wav_data, flux_data = read_1dspec(str(file_name))
         usable_kernel = Gaussian1DKernel(int(sp))
 
-        if kernel.lower() != 'gaussian':
+        if kernel.lower() != "gaussian":
             if kernel.lower() == 'box':
                 usable_kernel = Box1DKernel(int(sp))
             else:
-                print ("Error: Kernel '{0}' Not Recognised".format(kernel))
+                print ("Error: Kernel '{0}' Not Recognised".format(str(kernel)))
                 sys.exit(1)
 
         smoothed_data = convolve(flux_data, usable_kernel)
-        write_1dspec(ref_filename=file_name, flux_array=smoothed_data, prefix_str=prefix_str)
+        write_1dspec(ref_filename=str(file_name), flux_array=smoothed_data, prefix_str=str(prefix_str))
 
         if plot:
-            fig = plt.figure(figsize=(8, 6))
-            ax = fig.add_subplot(111)
-
-            ax.plot(wav_data, flux_data, 'g', label='Original Spectrum')
-            ax.plot(wav_data, smoothed_data, 'r', label='Smooth Spectrum')
-
-            ax.legend()
-            ax.grid()
+            plt.plot(wav_data, flux_data, 'g', label="Original Spectrum")
+            plt.plot(wav_data, smoothed_data, 'r', label="Smooth Spectrum")
+            plt.legend()
             plt.show()
-            plt.close(fig)
+            plt.close()
+
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -512,7 +514,7 @@ def smooth_1dspec(common_text, sp=1.2, kernel='gaussian', prefix_str='z_', plot=
 
 def scale_spectra(common_text, list_photfiles, prefix_str='f', plot=False):
     """
-    Scales spectra acccording to the values in the array 'scale_array'. Basically, this step applies
+    Scales spectra acccording to the values in the array "scale_array". Basically, this step applies
     flux calibration on the spectra.
     Args:
         common_text     : Common text of 1-D Spectra files whose spectroscopic fluxes are to be scaled
@@ -522,11 +524,11 @@ def scale_spectra(common_text, list_photfiles, prefix_str='f', plot=False):
     Returns:
         None
     """
-    list_files = group_similar_files('', common_text=common_text)
+    list_files = group_similar_files("", common_text=str(common_text))
 
     for file_name in list_files:
-        dict_spec = read_specflux(file_name)
-        dict_phot = read_photflux(list_photfiles=list_photfiles, julian_day=read_jd(file_name))
+        dict_spec = read_specflux(str(file_name))
+        dict_phot = read_photflux(list_photfiles=str(list_photfiles), julian_day=read_jd(str(file_name)))
         dict_phot = get_zflux(dict_phot, cntrl_wav=7500)
         dict_scale = dict((key, str(float(dict_phot[key]) / float(dict_spec[key]))) for key in dict_phot.keys() if
                           key in dict_spec.keys())
@@ -534,35 +536,20 @@ def scale_spectra(common_text, list_photfiles, prefix_str='f', plot=False):
         if len(dict_scale.keys()) > 3:
             del dict_scale[7500]
 
-        # if len(dict_scale.keys()) > 4:
-        #     order = 4
-        # else:
-        #     order = len(dict_scale.keys()) - 1
+        data_series = pd.Series(dict_scale)
+        spline = CubicSpline(data_series.index.values, data_series.values, bc_type='natural', extrapolate=True)
 
-        series = pd.Series(dict_scale, dtype='float64')
-        spline = CubicSpline(series.index.values, series.values, bc_type='natural', extrapolate=True)
-        spline2 = Rbf(series.index.values, series.values)
-
-        wave_data, flux_data = read_1dspec(file_name)
-        scale_data = spline(wave_data)
-        scale_data[scale_data < 0] = 0
-
-        flux_moddata = np.multiply(np.asarray(flux_data), scale_data)
-        write_1dspec(ref_filename=file_name, flux_array=flux_moddata, prefix_str=prefix_str)
+        wave_data, flux_data = read_1dspec(str(file_name))
+        flux_moddata = np.multiply(np.asarray(flux_data), spline(wave_data))
+        write_1dspec(ref_filename=str(file_name), flux_array=flux_moddata, prefix_str=str(prefix_str))
 
         if plot:
-            fig = plt.figure(figsize=(8, 6))
-            ax = fig.add_subplot(111)
-
             wavenew = np.linspace(float(wave_data[0]), float(wave_data[-1]), 10000)
-            ax.plot(series.index.values, series.values, 'o', label='Data Points')
-            ax.plot(wavenew, spline(wavenew), 'k', label='CubicSpline')
-            ax.plot(wavenew, spline2(wavenew), 'r', label='Rbf')
-
-            ax.legend()
-            ax.grid()
+            plt.plot(data_series.index.values, data_series.values, 'o')
+            plt.plot(wavenew, spline(wavenew), 'r')
+            plt.grid()
             plt.show()
-            plt.close(fig)
+            plt.close()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -574,26 +561,23 @@ for path in list_paths:
     check_ifexists(path)
 # ------------------------------------------------------------------------------------------------------------------- #
 
-
 # ------------------------------------------------------------------------------------------------------------------- #
 # Copies Files Needed For Flux Calibration (sp_*.asc) And Supernova Magnitudes To The Current Working Directory
 # ------------------------------------------------------------------------------------------------------------------- #
-copy_files(inp_path=DIR_HOME, out_path=DIR_SPEC, common_text='Filter_*.asc', exceptions='BPF,SDSS')
-copy_files(inp_path=DIR_PHOT, out_path=DIR_SPEC, common_text='OUTPUT_InterpSNMag*', exceptions='Row,Col')
+copy_files(in_path=DIR_HOME, out_path=DIR_SPECS, common_text="Filter_*.asc")
+copy_files(in_path=DIR_PHOT, out_path=DIR_SPECS, common_text="OUTPUT_InterpSNMag*")
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Manual Setup - GUI Code
 # ------------------------------------------------------------------------------------------------------------------- #
-# rmv_files = eg.boolbox('Remove Residual Files From Previous Run?', title='Remove Residual Files',
-#                        choices=['Yes', 'No'])
+# rmv_files = eg.boolbox('Remove Residual Files From Previous Run?', title='Remove Residual Files', choices=['Yes', 'No'])
 # ctext = eg.enterbox('Enter The Common Text Of Files To Be Flux Calibrated?', title='Flux Calibration',
 #                     default='*cfwcbs_*.ms.fits')
 # bool_smooth = eg.boolbox('Perform Smoothening Of Spectra?', title='Smoothening 1-D Spectra', choices=['Yes', 'No'])
-
 rmv_files = True
-ctext = '*.fits'
+ctext = '*cfwcbs_*.ms.fits'
 bool_smooth = True
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -601,10 +585,10 @@ bool_smooth = True
 # ------------------------------------------------------------------------------------------------------------------- #
 # Removes Residual Files From Previous Run Of Flux Calibration
 # ------------------------------------------------------------------------------------------------------------------- #
-os.chdir(DIR_SPEC)
+os.chdir(DIR_SPECS)
 if rmv_files:
     for text in ['z_*.fits', 'fz_*.fits', 'rfz_*.fits', 'list_smspec']:
-        remove_similar_files(common_text=text)
+        remove_similar_files(common_text=str(text))
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -612,13 +596,12 @@ if rmv_files:
 # Performs Smoothening, SBANDS Task & Finally Flux Calibration On 1-D Spectra
 # ------------------------------------------------------------------------------------------------------------------- #
 if bool_smooth:
-    smooth_1dspec(common_text=ctext, sp=2, kernel='gaussian')
-    ctext = 'z_' + ctext
-    display_text('Smoothening of 1-D Spectra Have Been Performed')
+    smooth_1dspec(common_text=str(ctext), sp=1.5, kernel="gaussian", prefix_str='z_')
+    ctext = "z_" + str(ctext)
+    display_text("Smoothening of 1-D Spectra Have Been Performed")
 
-sbands(common_text=ctext)
-group_similar_files("list_interpmag", common_text='OUTPUT_InterpSNMag*')
-
-scale_spectra(common_text=ctext, list_photfiles="list_interpmag", plot=False)
-display_text('Flux Calibration Has Been Performed On All Of 1-D Spectra')
+sbands(common_text=str(ctext))
+group_similar_files("list_interpmag", common_text="OUTPUT_InterpSNMag*")
+scale_spectra(common_text=str(ctext), list_photfiles="list_interpmag", plot=True)
+display_text("Flux Calibration Has Been Performed On All Of 1-D Spectra")
 # ------------------------------------------------------------------------------------------------------------------- #

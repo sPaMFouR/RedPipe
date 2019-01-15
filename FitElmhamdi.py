@@ -11,8 +11,8 @@ import glob
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
 from scipy.optimize import curve_fit
+from matplotlib.ticker import MultipleLocator
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -52,7 +52,6 @@ def group_similar_files(text_list, common_text, exceptions=''):
 
     return list_files
 
-
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -78,7 +77,6 @@ def magtoflux(mag):
 
 def fluxtomag(flux):
     return -2.5 * np.log10(flux) - 21.1
-
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -133,7 +131,6 @@ def fit_data(name, data_df, xdata, epoch_tran):
     inflection = xdata[np.where(grad == grad.max())][0]
 
     return mag, grad, steepness, inflection
-
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -233,14 +230,12 @@ def plot_steepness(list_sne, xlims=[30, 210], ylim=0.45, out_suffix=1):
     plt.show()
     plt.close(fig)
 
-
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Calculate Steepness Parameter For SNe In Study
 # ------------------------------------------------------------------------------------------------------------------- #
-
 dict_epoch = {'1992af': [50, 110, 80], '1992ba': [60, 210, 125], '1999em': [70, 170, 115], '1999gi': [70, 170, 120],
               '2002hx': [20, 140, 75], '2003gd': [50, 180, 125], '2003hn': [50, 150, 95], '2004dj': [95, 180, 125],
               '2004ej': [80, 160, 115], '2004et': [70, 220, 125], '2004fx': [70, 140, 105], '2005af': [50, 150, 110],
@@ -250,7 +245,7 @@ dict_epoch = {'1992af': [50, 110, 80], '1992ba': [60, 210, 125], '1999em': [70, 
               '2013ab': [70, 150, 100], '2013ej': [70, 130, 100], '2013by': [60, 155, 85], 'LSQ13dpa': [50, 180, 130],
               '2013hj': [70, 180, 105], '2014G': [50, 130, 90], '2014cx': [70, 150, 110], '2014dw': [50, 150, 90],
               'ASASSN-14dq': [60, 150, 100], 'ASASSN-14ha': [110, 170, 135], '2016X': [60, 135, 95],
-              '2016bkv': [50, 240, 130], '2017eaw': [90, 170, 120]}
+              '2016bkv': [50, 240, 130], '2016gfy': [70, 170, 110], '2017eaw': [90, 170, 120]}
 
 list1 = ['2005af.asc', '2009N.asc', '2013ab.asc', '2013ej.asc', '2014cx.asc']
 list2 = ['2004et.asc', '2009ib.asc', '2012aw.asc', '2013K.asc', '2013hj.asc']
@@ -273,7 +268,7 @@ plot_steepness(list6, [20, 180], 0.28, 6)
 # Calculate Steepness Parameter For SNe In Study
 # ------------------------------------------------------------------------------------------------------------------- #
 
-for file_name in ['ASASSN-14dq.asc']:
+for file_name in ['2016gfy.dat']:
     name = file_name.split('/')[-1].split('.')[0]
     data_df = read_data(file_name)
     xaxis = np.linspace(data_df['Phase'].min(), data_df['Phase'].max(), 1000)
@@ -290,14 +285,14 @@ for file_name in ['ASASSN-14dq.asc']:
     set_plot1params(ax1)
     set_plot2params(ax2)
 
-    ax1.set_xlim(40, 170)
-    ax2.set_ylim(-0.02, 0.22)
+    ax1.set_xlim(65, 170)
+    ax2.set_ylim(-0.01, 0.18)
+    ax1.set_ylim(19, 16)
 
     ax1.axvline(inflectionelm, linestyle='--', color='r', linewidth=1)
     ax2.axvline(inflectionelm, linestyle='--', color='r', linewidth=1)
-
-    ax2.text((inflectionelm * 0.55), 0.13, r'$S$={0:.3f}'.format(steepnesselm), fontsize=14)
-    ax2.text(inflectionelm + 10, 0.18, r'$t_i$={0:5.1f} d'.format(inflectionelm), fontsize=14)
+    ax2.text((inflectionelm * 0.75), 0.12, r'$S$={0:.3f}'.format(steepnesselm), fontsize=14)
+    ax2.text(inflectionelm + 10, 0.14, r'$t_i$={0:5.1f} d'.format(inflectionelm), fontsize=14)
 
     # ax2.text(inflectionelm * 1.1, steepnesselm * 1.1, r'$t_i$={0:5.1f} d'.format(inflectionelm), fontsize=14)
     # ax2.text(inflectionelm * 0.8, steepnesselm * 1.1, r'$S_e$={0:.3f}'.format(steepnesselm), fontsize=14)
@@ -316,22 +311,21 @@ for file_name in ['ASASSN-14dq.asc']:
     # ax2.text(inflectionelm * 0.8, steepnesselm * 1.3, r'$S_v$={0:.3f}'.format(steepnessval), fontsize=14)
     # print('Chi-Square [ValentiFunc]: {0}'.format(fit_chisqval[0]))
     # print('Plateau Length : {0}'.format(valopt[1]))
+    # print('Chi-Square [ElmhamdiFunc]: {0}'.format(fit_chisqelm[0]))
+    # print('Plateau Length : {0}'.format(elmopt[2]))
 
-    ax2.yaxis.set_major_locator(MultipleLocator(0.1))
-    ax2.yaxis.set_minor_locator(MultipleLocator(0.025))
-    ax2.tick_params(which='both', direction='in', width=1, labelsize=14)
-    ax2.tick_params(which='both', direction='in', width=1, labelsize=14)
-
+    ax2.yaxis.set_major_locator(MultipleLocator(0.05))
+    ax2.yaxis.set_minor_locator(MultipleLocator(0.01))
+    ax2.xaxis.set_major_locator(MultipleLocator(30))
+    ax2.xaxis.set_minor_locator(MultipleLocator(3))
     ax1.set_ylabel('Apparent Magnitude [mag]', fontsize=14)
     ax2.set_ylabel(r'$|\rm dM_V/dt|\ [mag\ d^{-1}]$', fontsize=14)
     ax2.set_xlabel('Time Since Explosion [Days]', fontsize=14)
 
-    fig.subplots_adjust(hspace=0)
-    fig.savefig('OUTPUT_14dqSteepness.eps', dpi=600, format='eps', bbox_inches='tight')
+    fig.subplots_adjust(hspace=0.01)
+    fig.savefig('PLOT_2016gfySteepness.pdf', format='pdf', dpi=2000, bbox_inches='tight')
     plt.show()
     plt.close(fig)
 
-#     print('Chi-Square [ElmhamdiFunc]: {0}'.format(fit_chisqelm[0]))
-#     print('Plateau Length : {0}'.format(elmopt[2]))
 
 # ------------------------------------------------------------------------------------------------------------------- #

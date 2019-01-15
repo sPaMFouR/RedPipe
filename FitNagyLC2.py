@@ -24,7 +24,7 @@ core_file = 'core.out'
 shell_file = 'shell.out'
 comb_file = 'comb.out'
 obsbol_file = 'OUTPUT_DateWiseSNBolFlux'
-output_file ='OUTPUT_ChiSquare'
+output_file = 'OUTPUT_ChiSquare'
 
 DIR_CURNT = os.getcwd()
 DIR_Model = "/home/avinash/Dropbox/ModelSNe/Nagy_LC2/"
@@ -117,10 +117,10 @@ shell_tmag = np.array([0.0])
 shell_gamma = 1e7 * np.arange(1, 1000, 200)
 shell_epoch = np.array([100.0])
 
-list_core = [core_radii, core_mej, core_trec, core_mni, core_eke, core_eth, core_exp, 
-            core_pow, core_kap, core_mag, core_tmag, core_gamma, core_epoch]
+list_core = [core_radii, core_mej, core_trec, core_mni, core_eke, core_eth, core_exp,
+             core_pow, core_kap, core_mag, core_tmag, core_gamma, core_epoch]
 
-list_shell = [shell_radii, shell_mej, shell_trec, shell_mni, shell_eke, shell_eth, shell_exp, 
+list_shell = [shell_radii, shell_mej, shell_trec, shell_mni, shell_eke, shell_eth, shell_exp,
               shell_pow, shell_kap, shell_mag, shell_tmag, shell_gamma, shell_epoch]
 
 longlist_core = list(product(*list_core))
@@ -151,13 +151,13 @@ for core_index, core_values in enumerate(longlist_core):
         shell_srs = pd.Series(shell_values)
         core_srs.to_csv("par_core.inp", index=None)
         shell_srs.to_csv("par_shell.inp", index=None)
-        
+
         os.system("./run ")
-        
+
         comb_df = pd.read_csv(comb_file, sep='\s+', header=None, names=comb_cols, comment='#', engine='python')
         comb_df['Lum'] = comb_df['LumCore'] + comb_df['LumShell']
-        
-        chisq_df = chisq_df.append({'CoreIndex': core_index, 'ShellIndex': shell_index, 
+
+        chisq_df = chisq_df.append({'CoreIndex': core_index, 'ShellIndex': shell_index,
                                     'ChiSquare': calc_chisquare(obsbol_df, comb_df)}, ignore_index=True)
 
 min_index = chisq_df['ChiSquare'].idxmin()
@@ -165,13 +165,12 @@ min_row = chisq_df.loc[min_index, :]
 print min_row['ChiSquare']
 print longlist_core[int(min_row['CoreIndex'])]
 print longlist_shell[int(min_row['ShellIndex'])]
-                     
+
 with open(output_file, 'w') as fout:
     fout.write("# Best-Fit Values Are: \n")
     fout.write('# Chi-Square : ' + str(min_row['ChiSquare']) + '\n')
     fout.write('# Core Index : ' + str(int(min_row['CoreIndex'])) + '\n')
     fout.write('# Shell Index : ' + str(int(min_row['ShellIndex'])) + '\n')
-    
+
 chisq_df.to_csv(output_file, index=None, header=True, sep=' ', mode='a')
 # ------------------------------------------------------------------------------------------------------------------- #
-

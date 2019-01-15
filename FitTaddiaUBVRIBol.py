@@ -210,9 +210,9 @@ for band in list_bands:
     fitbanderrmax = (abs(band_fit.loc[band_fit['JD'].shift(-5) == fitbandjdmax, band].values[0] - fitbandmagmax) +
                      abs(band_fit.loc[band_fit['JD'].shift(5) == fitbandjdmax, band].values[0] - fitbandmagmax)) / 2.
     fitbanderr15 = (abs(band_fit.loc[band_fit['JD'].shift(-5) == fitbandjdmax + 15, band].values[0] - fitbandmag15) +
-                    abs(band_fit.loc[band_fit['JD'].shift(5) == fitbandjdmax + 15, band].values[0] - fitbandmag15)) / 2.
+                    abs(band_fit.loc[band_fit['JD'].shift(5) == fitbandjdmax + 15, band].values[0] - fitbandmag15)) / 2
     fitbanderr40 = (abs(band_fit.loc[band_fit['JD'].shift(-5) == fitbandjdmax + 40, band].values[0] - fitbandmag40) +
-                    abs(band_fit.loc[band_fit['JD'].shift(5) == fitbandjdmax + 40, band].values[0] - fitbandmag40)) / 2.
+                    abs(band_fit.loc[band_fit['JD'].shift(5) == fitbandjdmax + 40, band].values[0] - fitbandmag40)) / 2
 
     banddeltam15 = fitbandmag15 - fitbandmagmax
     banddeltam40 = fitbandmag40 - fitbandmagmax
