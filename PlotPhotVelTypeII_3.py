@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from matplotlib import container
 import uncertainties.unumpy as unp
 from scipy.optimize import curve_fit
+import matplotlib.patches as mpatches
 from matplotlib.ticker import MultipleLocator
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 # plt.rc('font', family='serif', serif='Times')
@@ -124,8 +125,8 @@ def plot_confintervals(ax_obj, optpar, covpar, xarr, func=powerlaw, fcolor='blue
     fithigh = fit + 3 * sigma
 
     ax_obj.plot(xarr, fit, ls='--', c='k', lw=2, alpha=0.8, label='_nolegend_')
-    ax_obj.plot(xarr, fitlow, ls='-.', c='k', lw=1, alpha=0.3, label='_nolegend_')
-    ax_obj.plot(xarr, fithigh, ls='-.', c='k', lw=1, alpha=0.3, label='_nolegend_')
+    ax_obj.plot(xarr, fitlow, ls='-.', c='k', lw=1, alpha=0.35, label='_nolegend_')
+    ax_obj.plot(xarr, fithigh, ls='-.', c='k', lw=1, alpha=0.35, label='_nolegend_')
     ax_obj.fill_between(xarr, fitlow, fithigh, facecolor=fcolor, alpha=0.3)
 
     return fit, sigma
@@ -253,10 +254,11 @@ wave_df['JD'] = wave_df['Date'].apply(lambda x: cald_to_jd(x))
 wave_df['Phase'] = wave_df['JD'] - date_explosion
 wave_df = wave_df.set_index('Phase', drop=True)
 
-dict_markers = {'6563': ['*', 'b', r'H$\alpha$'], '4861': ['v', 'r', r'H$\beta$'],
-                '5169': ['D', 'k', r'$\rm Fe\,II$ 5169'], '5018': ['P', 'darkgreen', r'$\rm Fe\,II\ 5018$'],
-                '4924': ['s', 'darkorange', r'$\rm Fe\,II$ 4924'], '4340': ['o', 'm', r'H$\gamma$'],
+dict_markers = {'6563': ['*', 'b', r'H$\alpha$'], '4861': ['v', 'm', r'H$\beta$'],
+                '5169': ['o', 'k', r'$\rm Fe\,II$ 5169'], '5018': ['P', 'darkorange', r'$\rm Fe\,II\ 5018$'],
+                '4924': ['D', 'r', r'$\rm Fe\,II$ 4924'], '4340': ['s', 'green', r'H$\gamma$'],
                 '5876': ['X', 'brown', r'$\rm He\,I$ 5876']}
+
 # 6142: ['o', 'orange', r'Ba$\rm \,II$ 6142'], 6246: ['*', 'teal', r'Sc$\rm \,II$ 6246']
 
 vel_df = pd.DataFrame()
@@ -291,15 +293,22 @@ print np.round(opt3, 2), np.round(np.sqrt(np.diag(cov3)), 2)
 fig = plt.figure(figsize=(9, 9))
 ax = fig.add_subplot(111)
 
+handlecol = []
 for wave in ['6563', '4861', '4340', '4924', '5018', '5169', '5876']:
     if dict_markers[wave][0] == '*':
-        ms = 12
-    else:
         ms = 10
+    else:
+        ms = 8
     temp_series = vel_df[wave].dropna()
-    ax.errorbar(temp_series.index.values, temp_series.values / 1000, yerr=vel_df[wave + 'Err'].dropna() / 1000,
-                ls='--', lw=1, marker=dict_markers[wave][0], ms=ms, capsize=3, capthick=1, c='dimgrey',
-                markeredgewidth=0.5, markerfacecolor=dict_markers[wave][1], alpha=0.8, label=dict_markers[wave][2])
+#     ax.errorbar(temp_series.index.values, temp_series.values / 1000, yerr=vel_df[wave + 'Err'].dropna() / 1000,
+#                 ls='--', lw=1, marker=dict_markers[wave][0], ms=ms, capsize=3, capthick=1, c='dimgrey',
+#                 markeredgewidth=0.5, markerfacecolor=dict_markers[wave][1], alpha=0.8, label=dict_markers[wave][2])
+    ax.fill_between(temp_series.index.values, (temp_series.values - vel_df[wave + 'Err'].dropna()) / 1000,
+                    (temp_series.values + vel_df[wave + 'Err'].dropna()) / 1000, color=dict_markers[wave][1],
+                    alpha=0.45, label=dict_markers[wave][2])
+    ax.plot(temp_series.index.values, temp_series.values / 1000, c='k', markerfacecolor='dimgrey', markeredgewidth=1.5,
+            ls='--', lw=1, ms=ms, marker=dict_markers[wave][0], label=dict_markers[wave][2], alpha=0.6)
+    handlecol.append(mpatches.Patch(color=dict_markers[wave][1], alpha=0.5, linewidth=0))
 
 set_plotparams(ax, ylims=(1.2, 17))
 ax.set_xlim(-5, plot_epoch + 20)
@@ -308,19 +317,21 @@ ax.set_ylabel(r'Velocity $\rm [\times 10^3\ km\ s^{-1}$]', fontsize=16)
 
 axins = zoomed_inset_axes(ax, 1.4, loc=1)
 axins.errorbar(temp_5169.index.values, temp_5169['5169'] / 1000, yerr=temp_5169['5169Err'] / 1000, ls='',
-               alpha=0.7, capsize=3, ms=8, marker=dict_markers['5169'][0], capthick=1, elinewidth=1,
-               c=dict_markers['5169'][1], label=dict_markers['5169'][2])
+               alpha=0.5, capsize=3, ms=9, marker=dict_markers['5169'][0], capthick=1, elinewidth=1,
+               c=dict_markers['5169'][1], markerfacecolor='None', markeredgewidth=2, label=dict_markers['5169'][2])
+axins.plot(temp_5169.index.values, temp_5169['5169'] / 1000, ls='', alpha=0.7, ms=6, marker=dict_markers['5169'][0],
+           c=dict_markers['5169'][1], label='_nolegend_')
 
 handles, labels = ax.get_legend_handles_labels()
 handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
-ax.legend(handles, labels, fontsize=14, markerscale=1.4, frameon=False, loc=3)
+ax.legend(zip(handlecol, handles), labels, fontsize=14, markerscale=1.3, frameon=False, loc=3)
 
 set_plotparams(axins, ylims=(2.1, 7.6))
 axins.set_xlim(20, 110)
 axins.yaxis.set_major_locator(MultipleLocator(1))
-axins.text(65, 7.1, s=r'$\rm Fe\,II\ 5169\ Exponential\ Fit$', fontsize=14)
+axins.text(60, 7.1, s=r'$\rm Fe\,II\ 5169\ [Exponential\ Fit]$', fontsize=14)
 
-plot_confintervals(axins, opt, cov, np.arange(20, 120, 0.5), func=expfunc, fcolor='chocolate')
+plot_confintervals(axins, opt, cov, np.arange(20, 120, 0.5), func=expfunc, fcolor='grey')
 
 fig.savefig('PLOT_PhotVel.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()
@@ -371,8 +382,8 @@ ax3.set_ylim(2, 11)
 ax2.set_ylim(3.5, 15.5)
 ax2.set_xlim(-3, plot_epoch)
 ax3.legend(fontsize=14, markerscale=1.5, loc=1, frameon=False)
-plot_confintervals(ax2, opt2, cov2, np.arange(0.5, 140, 0.5), fcolor='chocolate')
-plot_confintervals(ax3, opt3, cov3, np.arange(20, 120, 0.5), fcolor='chocolate')
+plot_confintervals(ax2, opt2, cov2, np.arange(0.5, 140, 0.5), fcolor='dimgrey')
+plot_confintervals(ax3, opt3, cov3, np.arange(20, 120, 0.5), fcolor='dimgrey')
 
 ax2.text(50, 11.1, s='11,000 km/s', color='red', alpha=0.8, fontsize=12)
 ax2.text(50, 13.1, s='13,000 km/s', color='navy', alpha=0.8, fontsize=12)

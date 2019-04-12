@@ -24,7 +24,8 @@ precision = 3
 filters = ['U', 'B', 'V', 'R', 'I']
 list_psfcol = ['ID', 'IMAGE', 'IFILTER', 'XCENTER', 'YCENTER', 'SKY_COUNTS', 'AIRMASS', 'PSFRAD', 'PSFMAG', 'PSFERR']
 list_magcol = ['ID', 'IMAGE', 'IFILTER', 'XCENTER', 'YCENTER', 'SKY_COUNTS', 'AIRMASS',
-               'APER_1', 'APER_2', 'MAG_1', 'MAG_2', 'MERR_1', 'MERR_2']
+               'APER_1', 'APER_2', 'MAG_1', 'MAG_2', 'ERR_1', 'ERR_2']
+file_starscoo = 'stars.coo'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -348,44 +349,54 @@ def calculate_psfmag(file_als, zpmag_df, zperr_df):
         mag_df      : Pandas DataFrame containing broadband magnitudes
         err_df      : Pandas DataFrame containing errors in magnitudes
     """
-    psf_df = pd.read_csv(file_als, sep='\s+', names=list_psfcol, index_col=0, engine='python')
+    star_df = pd.read_csv(file_starscoo, sep='\s+', header=None)
+    star_count = len(star_df.index.values)
+    date = file_als.split('_')[1]
+
+    psf_df = pd.read_csv(file_als, sep='\s+', names=list_psfcol)
     psf_df['FILTER'] = psf_df['IFILTER'].apply(lambda x: x[-1])
-    psf_df = psf_df[['FILTER', 'PSFMAG', 'PSFERR']]
+    psf_df = psf_df.replace('INDEF', np.nan).set_index(['ID', 'IFILTER'])
+    psf_df[['PSFMAG', 'PSFERR']] = psf_df[['PSFMAG', 'PSFERR']].astype('float64')
     psf_df = psf_df.sort_index().sort_values(by='FILTER', kind='mergesort')
 
-    date = file_als.split('_')[1]
-    indexes = psf_df.index.values
-    star_count = len(set(indexes)) - 1
-
-    psfstars_df = psf_df.loc[psf_df.index != star_count + 1].copy()
-    psfsn_df = psf_df.loc[psf_df.index == star_count + 1].copy()
+    psfstars_df = psf_df.query('ID != @star_count + 1').copy()
+    psfsn_df = psf_df.query('ID == @star_count + 1').copy()
 
     file_mag = file_als[:-4] + 'mag4'
-    mag_df = pd.read_csv(file_mag, sep='\s+', names=list_magcol, index_col=0, engine='python')
+    mag_df = pd.read_csv(file_mag, sep='\s+', names=list_magcol)
+    mag_df = mag_df.replace('INDEF', np.nan).sort_index().set_index(['ID', 'IFILTER'])
+    mag_df[['MAG_2', 'ERR_2']] = mag_df[['MAG_2', 'ERR_2']].astype('float64')
 
-    psfstars_df['MAG_2'] = mag_df['MAG_2']
-    psfstars_df['PSFCOR'] = (psfstars_df['PSFMAG'] - psfstars_df['MAG_2']).round(int(precision))
+    psfstars_df[['MAG_2', 'ERR_2']] = mag_df[['MAG_2', 'ERR_2']]
+    psfstars_df['PSFCOR'] = psfstars_df['PSFMAG'] - psfstars_df['MAG_2']
+    psfstars_df['PSFCORERR'] = add_series([psfstars_df['PSFERR'], psfstars_df['ERR_2']], err=True)
 
-    mean = {}
-    stdev = {}
-    data_grouped = psfstars_df[['PSFCOR', 'FILTER']].groupby(['FILTER'])
+    data_grouped = psfstars_df[['PSFCOR', 'PSFCORERR', 'FILTER']].dropna(how='any').groupby(['FILTER'])
+    psfcor_mean = {}
+    psfcor_meanerr = {}
+    psfcor_stdev = {}
+
     for band in set(psfstars_df['FILTER'].values):
-        temp_list = reject(data_grouped.get_group(name=band)['PSFCOR'].tolist(), iterations=int(star_count / 3) + 1)
-        mean[band] = np.mean(temp_list)
-        stdev[band] = np.std(temp_list)
+        band_group = data_grouped.get_group(name=band)
+        psfcor_vals = reject(band_group['PSFCOR'].tolist(), iterations=int(star_count / 3) + 1)
+        psfcor_errs = band_group.isin({'PSFCOR': psfcor_vals})['PSFCORERR']
 
-    psfsn_df['COR_MEAN'] = psfsn_df['FILTER'].apply(lambda x: mean[x])
-    psfsn_df['COR_STD'] = psfsn_df['FILTER'].apply(lambda x: stdev[x])
+        psfcor_mean[band] = np.mean(psfcor_vals)
+        psfcor_stdev[band] = np.std(psfcor_vals)
+        psfcor_meanerr[band] = np.sum([val ** 2 for val in psfcor_errs]) ** 0.5
 
+    psfsn_df['PSFCOR_MEAN'] = psfsn_df['FILTER'].apply(lambda x: psfcor_mean[x])
+    psfsn_df['PSFCOR_MEANERR'] = psfsn_df['FILTER'].apply(lambda x: psfcor_stdev[x])
+    psfsn_df['PSFCOR_STD'] = psfsn_df['FILTER'].apply(lambda x: psfcor_stdev[x])
     psfsn_df['ZP_MAG'] = psfsn_df['FILTER'].apply(lambda x: zpmag_df.loc[date, x])
     psfsn_df['ZP_ERR'] = psfsn_df['FILTER'].apply(lambda x: zperr_df.loc[date, x])
 
-    psfsn_df['FMAG'] = psfsn_df['PSFMAG'] - psfsn_df['COR_MEAN'] - psfsn_df['ZP_MAG']
-    psfsn_df['FERR'] = add_series([psfsn_df['PSFERR'], psfsn_df['COR_STD'], psfsn_df['ZP_ERR']], err=True)
+    psfsn_df['FMAG'] = psfsn_df['PSFMAG'] - psfsn_df['PSFCOR_MEAN'] - psfsn_df['ZP_MAG']
+    psfsn_df['FERR'] = add_series([psfsn_df['PSFERR'], psfsn_df['PSFCOR_STD'], psfsn_df['PSFCOR_MEANERR'],
+                                   psfsn_df['ZP_ERR']], err=True)
 
-    psfsn_df = psfsn_df[['FILTER', 'FMAG', 'FERR']].round(int(precision))
+    psfsn_df = psfsn_df[['FILTER', 'FMAG', 'FERR']].round(int(precision)).reset_index('IFILTER', drop=True)
     psfsn_df = append_missing_data(psfsn_df).set_index('FILTER')
-
     psfsn_df.to_csv('OUTPUT_SNMag_' + date, sep=' ', index=False)
 
     return date, psfsn_df
@@ -402,47 +413,53 @@ def calculate_tempmag(file_mag, zpmag_df, zperr_df):
         mag_df      : Pandas DataFrame containing broadband magnitudes
         err_df      : Pandas DataFrame containing errors in magnitudes
     """
-    temp_df = pd.read_csv(filepath_or_buffer=file_mag, sep='\s+', names=list_magcol, index_col=0, engine='python')
+    temp_df = pd.read_csv(filepath_or_buffer=file_mag, sep='\s+', names=list_magcol, index_col=0)
     temp_df['FILTER'] = temp_df['IFILTER'].apply(lambda x: str(x)[-1])
-    temp_df = temp_df[['FILTER', 'MAG_1', 'MERR_1']]
+    temp_df = temp_df.replace('INDEF', np.nan)
+    temp_df[['MAG_1', 'ERR_1']] = temp_df[['MAG_1', 'ERR_1']].astype('float64')
     temp_df = temp_df.sort_index().sort_values(by='FILTER', kind='mergesort')
 
-    temp_df = temp_df.set_index('FILTER', append=True).replace('INDEF', np.nan)
-    temp_df = temp_df.astype('float64').round(3).reset_index(level=['FILTER'])
-
-    indexes = temp_df.index.values
-    star_count = len(set(indexes))
-
+    star_count = len(set(temp_df.index.values))
     file_mag4 = file_mag[:-4] + 'mag4'
-    mag_df = pd.read_csv(filepath_or_buffer=file_mag4, sep='\s+', names=list_magcol, index_col=0, engine='python')
-    mag_df['FILTER'] = mag_df['IFILTER'].apply(lambda x: str(x)[-1])
-    mag_df['APCOR'] = mag_df['MAG_1'] - mag_df['MAG_2']
+    date = file_mag.split('_')[1]
 
-    data_grouped = mag_df[['APCOR', 'FILTER']].groupby(['FILTER'])
-    mean = {}
-    stdev = {}
+    mag_df = pd.read_csv(filepath_or_buffer=file_mag4, sep='\s+', names=list_magcol, index_col=0)
+    mag_df['FILTER'] = mag_df['IFILTER'].apply(lambda x: str(x)[-1])
+    mag_df = mag_df.replace('INDEF', np.nan).sort_index().sort_values(by='FILTER', kind='mergesort')
+    mag_df[['MAG_1', 'ERR_1']] = mag_df[['MAG_1', 'ERR_1']].astype('float64')
+    mag_df['APCOR'] = mag_df['MAG_1'] - mag_df['MAG_2']
+    mag_df['APCORERR'] = add_series([mag_df['ERR_1'], mag_df['ERR_2']], err=True)
+
+    data_grouped = mag_df[['APCOR', 'APCORERR', 'FILTER']].dropna(how='any').groupby(['FILTER'])
+    apcor_mean = {}
+    apcor_meanerr = {}
+    apcor_stdev = {}
 
     for band in set(mag_df['FILTER'].values):
-        temp_list = reject(data_grouped.get_group(name=band)['APCOR'].tolist(), iterations=int(star_count / 3) + 1)
-        mean[band] = np.mean(temp_list)
-        stdev[band] = np.std(temp_list)
+        band_group = data_grouped.get_group(name=band)
+        apcor_vals = reject(band_group['APCOR'].tolist(), iterations=int(star_count / 3) + 1)
+        apcor_errs = band_group.isin({'APCOR': apcor_vals})['APCORERR']
 
-    temp_df['COR_MEAN'] = temp_df['FILTER'].apply(lambda x: mean[x])
-    temp_df['COR_STD'] = temp_df['FILTER'].apply(lambda x: stdev[x])
+        apcor_mean[band] = np.mean(apcor_vals)
+        apcor_stdev[band] = np.std(apcor_vals)
+        apcor_meanerr[band] = np.sum([val ** 2 for val in apcor_errs]) ** 0.5
 
-    date = file_mag.split('_')[1]
+    temp_df['APCOR_MEAN'] = temp_df['FILTER'].apply(lambda x: apcor_mean[x])
+    temp_df['APCOR_MEANERR'] = temp_df['FILTER'].apply(lambda x: apcor_stdev[x])
+    temp_df['APCOR_STD'] = temp_df['FILTER'].apply(lambda x: apcor_stdev[x])
+
     temp_df['ZP_MAG'] = temp_df['FILTER'].apply(lambda x: zpmag_df.loc[date, x])
     temp_df['ZP_ERR'] = temp_df['FILTER'].apply(lambda x: zperr_df.loc[date, x])
 
-    temp_df['FMAG'] = temp_df['MAG_1'] - temp_df['COR_MEAN'] - temp_df['ZP_MAG']
-    temp_df['FERR'] = add_series([temp_df['MERR_1'], temp_df['COR_STD'], temp_df['ZP_ERR']], err=True)
+    temp_df['FMAG'] = temp_df['MAG_1'] - temp_df['APCOR_MEAN'] - temp_df['ZP_MAG']
+    temp_df['FERR'] = add_series([temp_df['ERR_1'], temp_df['APCOR_STD'], temp_df['APCOR_MEANERR']],
+                                 temp_df['ZP_ERR'], err=True)
     temp_df = temp_df.round(int(precision))
     temp_df = append_missing_data(temp_df[['FILTER', 'FMAG', 'FERR']]).set_index('FILTER')
 
     temp_df.to_csv('OUTPUT_SNMagTemp_' + date, sep=' ', index=False)
 
     return date, temp_df
-
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -461,13 +478,17 @@ dict_zperr = {}
 list_instrmag = group_similar_files('', 'OUTPUT_instrmag_*')
 list_instrerr = group_similar_files('', 'OUTPUT_instrerr_*')
 
+if not list_instrmag:
+    print ("ERROR: Instrumental Magnitudes Have Been Not Computed [Run The CalcInstrMag.py Script]")
+    sys.exit(1)
+
 for index, file_name in enumerate(list_instrmag):
     date = file_name.split('_')[-1]
-    obsmag_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', index_col=0, engine='python')
-    obserr_df = pd.read_csv(filepath_or_buffer=list_instrerr[index], sep='\s+', index_col=0, engine='python')
+    obsmag_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', index_col=0)
+    obserr_df = pd.read_csv(filepath_or_buffer=list_instrerr[index], sep='\s+', index_col=0)
 
-    obsmag_df = obsmag_df.replace('INDEF', np.nan).round(decimals=int(precision)).dropna(axis=1, how='all')
-    obserr_df = obserr_df.replace('INDEF', np.nan).round(decimals=int(precision)).dropna(axis=1, how='all')
+    obsmag_df = obsmag_df.replace('INDEF', np.nan).astype('float64').dropna(axis=1, how='all')
+    obserr_df = obserr_df.replace('INDEF', np.nan).astype('float64').dropna(axis=1, how='all')
 
     dict_zpmag[date] = {}
     dict_zperr[date] = {}
@@ -516,13 +537,13 @@ JD_df = pd.DataFrame(data=dict_JD)
 # Calculate Final Magnitudes For The SN During Different Epochs
 # ------------------------------------------------------------------------------------------------------------------- #
 list_psfmag = group_similar_files('', 'output_*als1')
-list_psfmag = [alsfile for alsfile in list_psfmag if alsfile[7:17] in JD_df.columns.values]
+list_psfmag = [alsfile for alsfile in list_psfmag if alsfile.split('_')[1] in JD_df.columns.values]
 
 finalmag_df = pd.DataFrame()
 for file_name in list_psfmag:
     date, psfdate_df = calculate_psfmag(file_name, zpmag_df, zperr_df)
-    finalmag_df = pd.concat([finalmag_df, pd.concat([psfdate_df, JD_df.loc[:, date].rename('JD')], axis=1)])
-
+    finalmag_df = pd.concat([finalmag_df, pd.concat([psfdate_df, JD_df.loc[:, date].rename('JD')], axis=1, sort=True)])
+print finalmag_df
 finalmag_df = finalmag_df[['JD', 'FMAG', 'FERR']]
 finalmag_df = finalmag_df.dropna().sort_values(by='JD').sort_index(kind='mergesort')
 finalmag_df.to_csv('OUTPUT_FinalSNMag', sep=' ', index=True, index_label='FILTER')
@@ -534,17 +555,17 @@ display_text("Photometric Magnitudes For The Supernova Have Been Computed")
 # ------------------------------------------------------------------------------------------------------------------- #
 # Calculate Final Magnitudes For The SN During Different Epochs (After Template Subtraction)
 # ------------------------------------------------------------------------------------------------------------------- #
-list_tempmag = group_similar_files('', 'output_*mag1')
-list_tempmag = [magfile for magfile in list_tempmag if magfile[7:17] in JD_df.columns.values]
+# list_tempmag = group_similar_files('', 'output_*mag1')
+# list_tempmag = [magfile for magfile in list_tempmag if magfile.split('_')[1] in JD_df.columns.values]
 
-tempmag_df = pd.DataFrame()
-for file_name in list_tempmag:
-    date, mag_df = calculate_tempmag(file_name, zpmag_df, zperr_df)
-    tempmag_df = pd.concat([tempmag_df, pd.concat([mag_df, JD_df.loc[:, date].rename('JD')], axis=1)])
+# tempmag_df = pd.DataFrame()
+# for file_name in list_tempmag:
+#     date, mag_df = calculate_tempmag(file_name, zpmag_df, zperr_df)
+#     tempmag_df = pd.concat([tempmag_df, pd.concat([mag_df, JD_df.loc[:, date].rename('JD')], axis=1)])
 
-tempmag_df = tempmag_df[['JD', 'FMAG', 'FERR']]
-tempmag_df = tempmag_df.dropna().sort_values(by='JD').sort_index(kind='mergesort')
-tempmag_df.to_csv('OUTPUT_FinalSNMagTemp', sep=' ', index=True, index_label='FILTER')
+# tempmag_df = tempmag_df[['JD', 'FMAG', 'FERR']]
+# tempmag_df = tempmag_df.dropna().sort_values(by='JD').sort_index(kind='mergesort')
+# tempmag_df.to_csv('OUTPUT_FinalSNMagTemp', sep=' ', index=True, index_label='FILTER')
 
-display_text("Template Subtracted Broadband Photometric Magnitudes For The Supernova Have Been Computed")
+# display_text("Template Subtracted Broadband Photometric Magnitudes For The Supernova Have Been Computed")
 # ------------------------------------------------------------------------------------------------------------------- #

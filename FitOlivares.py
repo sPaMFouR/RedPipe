@@ -211,16 +211,18 @@ def create_plot(ax1, band_df, opt):
 
     jdarr = np.round(np.arange(band_df['Phase'].min(), band_df['Phase'].max(), 0.1), 1)
 
-    ax1.scatter(band_df['Phase'], band_df[band], marker='*', s=40, c='k', label='Observed Data')
+    ax1.plot(band_df['Phase'], band_df[band], marker='*', ls='', ms=12, c='k', markerfacecolor='grey',
+             label='Observed Data')
     ax1.plot(jdarr, olifunc(jdarr, *opt), c='r', lw=1.2, label='Best Fit')
-    ax1.plot(jdarr, fermifunc(jdarr, *opt[0:3]) + opt[4], c='darkgoldenrod', lw=1.2, ls='--', label='Fermi Dirac')
-    ax1.plot(jdarr, linefunc(jdarr, *[opt[i] for i in [3, 1, 4]]), c='b', lw=1.2, ls='-.', label='Linear Decay')
-    ax1.plot(jdarr, gaussfunc(jdarr, *opt[5:]) + opt[4], c='g', lw=1.2, ls=':', label='Gaussian Peak')
+    ax1.plot(jdarr, fermifunc(jdarr, *opt[0:3]) + opt[4], c='darkgoldenrod', lw=1.4, ls='--', label='Fermi Dirac')
+    ax1.plot(jdarr, linefunc(jdarr, *[opt[i] for i in [3, 1, 4]]), c='b', lw=1.4, ls='-.', label='Linear Decay')
+    ax1.plot(jdarr, gaussfunc(jdarr, *opt[5:]) + opt[4], c='g', lw=1.4, ls=':', label='Gaussian Peak')
     ax1.axvline(opt[1], ls='--', lw=0.8, c='k')
 
-    ax1.yaxis.tick_right()
+#     ax1.yaxis.tick_right()
     ax1.yaxis.set_ticks_position('both')
     ax1.xaxis.set_ticks_position('both')
+    ax1.yaxis.set_label_position('right')
     ax1.yaxis.set_major_locator(MultipleLocator(1))
     ax1.yaxis.set_minor_locator(MultipleLocator(0.1))
     ax1.xaxis.set_major_locator(MultipleLocator(50))
@@ -228,42 +230,43 @@ def create_plot(ax1, band_df, opt):
     ax1.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=18, pad=8)
     ax1.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=18)
 
-    ax2.scatter(band_df['Phase'], band_df[band] - olifunc(band_df['Phase'], *opt), marker='^', c='k', s=30)
+    ax2.scatter(band_df['Phase'], band_df[band] - olifunc(band_df['Phase'], *opt), marker='^', c='r', s=30)
     ax2.axvline(opt[1], ls='--', lw=0.8, c='k')
 
     ax2.set_ylim(-0.25, 0.25)
     ax2.yaxis.set_ticks_position('both')
     ax2.xaxis.set_ticks_position('both')
+    ax2.yaxis.set_label_position('right')
     ax2.yaxis.set_major_locator(MultipleLocator(0.2))
     ax2.yaxis.set_minor_locator(MultipleLocator(0.04))
     ax2.xaxis.set_major_locator(MultipleLocator(50))
     ax2.xaxis.set_minor_locator(MultipleLocator(5))
 
-    ax2.tick_params(axis='y', which='major', direction='in', length=8, width=1.4, labelsize=16, pad=5)
+    ax2.tick_params(axis='y', which='major', direction='in', length=8, width=1.4, labelsize=16)
     ax2.tick_params(axis='x', which='major', direction='in', length=8, width=1.4, labelsize=18)
-    ax2.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=16)
+    ax2.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=18)
 
     if ax1 == axes[0, 0] or ax1 == axes[1, 0]:
-        ax2.set_yticklabels([])
         ax1.set_ylabel('Apparent Magnitude', fontsize=18)
-        ax2.set_ylabel(r'Residuals', fontsize=18)
+        ax2.set_ylabel('Residuals', color='r', fontsize=18)
     else:
         ax1.set_yticklabels([])
+        ax2.set_yticklabels([])
 
     if ax1 == axes[0, 0] or ax1 == axes[0, 1]:
         ax2.set_xticklabels([])
-        ax1.set_ylim(20.8, 15.8)
-        ax1.text(200, 16.2, '${0}$-Band'.format(band), fontsize=16)
+        ax1.set_ylim(20.5, 15.8)
+        ax1.text(200, 16.2, '${0}$-Band'.format(band), color='orangered', fontsize=18)
     else:
-        ax1.set_ylim(18.8, 15.2)
-        ax1.text(200, 15.5, '${0}$-Band'.format(band), fontsize=16)
+        ax1.set_ylim(18.7, 15.2)
+        ax1.text(200, 15.5, '${0}$-Band'.format(band), color='orangered', fontsize=18)
         ax2.set_xlabel('Time Since Explosion [Days]', fontsize=18)
 
-    plot_confintervals(ax1, opt, cov, jdarr, fcolor='g')
-    ax1.text(opt[1] + 1.5, ax1.get_ylim()[-1] + 0.5, r'Transition Phase', rotation=90, fontsize=12)
+    plot_confintervals(ax1, opt, cov, jdarr, fcolor='grey')
+    ax1.text(opt[1] + 1.5, ax1.get_ylim()[-1] + 0.2, r'Transition Phase', rotation=90, fontsize=13)
 
 
-fig, axes = plt.subplots(nrows=len(list_bands) / 2, ncols=2, figsize=(20, 20))
+fig, axes = plt.subplots(nrows=len(list_bands) / 2, ncols=2, figsize=(18, 18))
 
 for i in range(axes.shape[0]):
     for j in range(axes.shape[1]):
@@ -275,8 +278,8 @@ for i in range(axes.shape[0]):
                              p0=dict_guess[band])
         create_plot(axes[i, j], band_df, opt)
 
-axes[0, 1].legend(markerscale=3, fontsize=16, loc='lower left')
-fig.subplots_adjust(hspace=0.01, wspace=0.085)
+axes[0, 1].legend(markerscale=2.5, fontsize=18, frameon=False, loc='lower left')
+fig.subplots_adjust(hspace=0.01, wspace=0.05)
 fig.savefig('PLOT_FitOlivares2.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()
 plt.close(fig)

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
-# xxxxxxxxxxxxxx------------FIT COWEN MODEL TO THE EARLY PHASE LIGHT CURVE IN TYPE IIP SNe------------xxxxxxxxxxxxxxx #
+# xxxxxxxxxxxxxx----------FIT RADIOACTIVE DECAY PHASE TO ACCOUNT FOR THE GAMMA-RAY TRAPPING-----------xxxxxxxxxxxxxxx #
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
+
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Import Required Libraries
@@ -30,9 +31,9 @@ tNi = 8.8
 name_SN = '2016gfy'
 date_explosion = 2457641.4
 EBV_mag = 0.21
-EBV_err = 0.11
-dist_val = 36.0
-dist_err = 2.5
+EBV_err = 0.05
+dist_val = 29.64
+dist_err = 2.65
 fit_epoch = 130
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -40,7 +41,6 @@ fit_epoch = 130
 # ------------------------------------------------------------------------------------------------------------------- #
 # Useful Functions For Fitting And Conversions
 # ------------------------------------------------------------------------------------------------------------------- #
-
 
 def calc_Ek(Menv, v):
     return (3 / 10) * Menv * (v ** 2)
@@ -150,7 +150,7 @@ data_app = data_app.replace('INDEF', np.nan).astype('float64')[data_app['JD'] > 
 data_app = data_app.interpolate(method='linear', limit=2).round(2).set_index('JD')
 list_filters = [band for band in data_app.columns.values if 'Err' not in band]
 
-data_arr = data_app.as_matrix()
+data_arr = data_app.values
 size = data_arr.shape
 
 list_jd = np.repeat(data_app.index.values, (len(list_filters)))
@@ -233,11 +233,12 @@ data2_df = data_df[data_df['Phase'] < 250].dropna()
 # ------------------------------------------------------------------------------------------------------------------- #
 # Fit Late Phase Model & Determine Nickel Mass For SN In Study
 # ------------------------------------------------------------------------------------------------------------------- #
-fig = plt.figure(figsize=(9, 9))
+fig = plt.figure(figsize=(10, 10))
 ax = fig.add_subplot(111)
 
 jdarr = np.arange(data_df['Phase'].min(), data_df['Phase'].max(), 0.1)
 jdarr2 = np.arange(data2_df['Phase'].min(), data2_df['Phase'].max(), 0.1)
+
 opt, cov = curve_fit(latephasefunc, data_df['Phase'], data_df['Lum'], sigma=data_df['LumErr'], p0=[0.045, 100])
 opt2, cov2 = curve_fit(line, data2_df['Phase'], data2_df['Lum'], sigma=data2_df['LumErr'], p0=[1e39, 1e41])
 
@@ -247,39 +248,40 @@ fit = unp.nominal_values(latefunc)
 sigma = unp.std_devs(latefunc)
 
 m, c = unc.correlated_values(opt2, cov2)
-linefunc = line(jdarr2, m, c)
+linefunc = line(jdarr2, m, c) / 1e40
 fit2 = unp.nominal_values(linefunc)
 sigma2 = unp.std_devs(linefunc)
 
 print np.round(opt, 4)
-print np.diagonal(cov)
+print np.sqrt(np.diagonal(cov))
 print redchisq(data_df['Lum'], latephasefunc(data_df['Phase'], *opt), sd=data_df['LumErr'])
 
 print np.round(opt2, 4)
-print np.diagonal(cov2)
+print np.sqrt(np.diagonal(cov2))
 print redchisq(data2_df['Lum'], line(data2_df['Phase'], *opt2), sd=data2_df['LumErr'])
 
-ax.scatter(data_df['Phase'], data_df['Lum'] / 1e40, marker='*', s=150, c='r', label='Observed Data')
+ax.plot(data_df['Phase'], data_df['Lum'] / 1e40, marker='*', ls='', ms=12, markerfacecolor='dodgerblue', c='k',
+        label='Observed Data')
 ax.plot(jdarr, latephasefunc(jdarr, *opt) / 1e40, c='k', lw=1.5, ls='--', alpha=0.8, label='Late Phase Fit')
-ax.plot(jdarr, line(jdarr, *opt2) / 1e40, c='b', lw=2.5, ls=':', label='Linear Fit')
+ax.plot(jdarr, line(jdarr, *opt2) / 1e40, c='orangered', lw=2.0, ls='-', label='Linear Fit')
 ax.errorbar(data_df['Phase'], data_df['Lum'] / 1e40, yerr=data_df['LumErr'] / 1e40, c='k', lw=1.2, ls='', capsize=4,
             capthick=1, alpha=0.7, label='_nolegend_')
 
-ax.text(140, 0.5, color='b', s='\nDecline Rate = {0:.2e}'.format(100 * opt2[0]) + r' $\rm erg\ s^{-1}\ (100 d)^{-1}$',
-        fontsize=14)
-ax.text(300, 9, color='k', s=r'$\rm t_c\ \sim$' + ' {0:.0f} d'.format(opt[1]) + '\n' + r'$\rm M_{Ni}$' +
-        ' = {0:.3f} '.format(opt[0]) + r'$\rm M_{\odot}$', fontsize=15)
+ax.text(140, 0.5, s='\nDecline Rate = {0:.2e}'.format(100 * opt2[0]) + r' $\rm erg\ s^{-1}\ (100\ d)^{-1}$',
+        color='mediumblue', fontsize=15)
+ax.text(300, 9, color='k', fontsize=16, s=r'$\rm\ \ t_c\ \sim$' + ' {0:.0f} d\n'.format(opt[1]) +
+        r'$\rm M_{Ni}$' + ' = {0:.3f} '.format(opt[0]) + r'$\rm M_{\odot}$')
 
 plot_confintervals(ax, fit, sigma, jdarr)
 # plot_confintervals(ax, fit2, sigma2, jdarr2, fcolor='blue')
 
-ax.set_ylim(0, 20.8)
+ax.set_ylim(0, 14)
 ax.set_xlim(135, 390)
-ax.legend(markerscale=1.6, fontsize=16)
+ax.legend(markerscale=1.6, frameon=False, fontsize=16)
 ax.yaxis.set_ticks_position('both')
 ax.xaxis.set_ticks_position('both')
-ax.yaxis.set_major_locator(MultipleLocator(5))
-ax.yaxis.set_minor_locator(MultipleLocator(0.5))
+ax.yaxis.set_major_locator(MultipleLocator(3))
+ax.yaxis.set_minor_locator(MultipleLocator(0.3))
 ax.xaxis.set_major_locator(MultipleLocator(50))
 ax.xaxis.set_minor_locator(MultipleLocator(5))
 ax.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=16)
@@ -292,4 +294,4 @@ fig.subplots_adjust(hspace=0.01, wspace=0.01)
 fig.savefig('PLOT_FitLatePhase.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()
 plt.close(fig)
-# ------------------------------------------------------------------------------------------------------------------- #
+# ------------------------------------------------------------------------------------------------------------------- #s

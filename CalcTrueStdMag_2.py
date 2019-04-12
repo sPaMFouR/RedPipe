@@ -602,7 +602,7 @@ def calculate_betaframe(obs_df, std_df, alpha, err=False):
     beta_df['Beta_5'] = add_series([std_df['V'], obs_df['V'], mul_series(std_df['B-V'], alpha[5])], sub=True, err=err)
     beta_df['Beta_6'] = add_series([std_df['V'], obs_df['V'], mul_series(std_df['V-R'], alpha[6])], sub=True, err=err)
 
-    return output_df
+    return beta_df
 
 
 def calculate_netbeta(file_standard, std_matrix, list_alpha):
@@ -762,8 +762,7 @@ comb_df = pd.DataFrame(index=truemag_df.index.values)
 comb_df.index.name = 'ID'
 
 for band in filters:
-    comb_df[band] = truemag_df[band].apply(lambda x: "{:.2f}".format(x)) + r"$\pm$" +
-    trueerr_df[band].apply(lambda x: "{:.2f}".format(x))
+    comb_df[band] = truemag_df[band].apply(lambda x: '{:.2f}'.format(x)) + r'$\pm$' + trueerr_df[band].apply(lambda x: "{:.2f}".format(x))
 
 comb_df.reset_index().to_latex('_SecStdMag.tex', escape=False, index=False)
 display_text("True Secondary Standard Magnitudes Have Been Written Onto A Latex File")

@@ -611,8 +611,8 @@ def calculate_fwhm(textlist_files, coord_file='stars.coo', log_imexam='log_imexa
         list_mean_fwhm  : Python list containing Mean FWHM of all the FITS files
     """
     imexam_fwhm(textlist_files, coord_file=coord_file, log_imexam=log_imexam)
-    coord_df = pd.read_csv(coord_file, sep='\s+', header=None, engine='python')
-    data_df = pd.read_csv(log_imexam, sep='\s+', comment='#', header=None, engine='python')
+    coord_df = pd.read_csv(coord_file, sep='\s+', comment='#', header=None)
+    data_df = pd.read_csv(log_imexam, sep='\s+', comment='#', header=None)
     count = coord_df.shape[0]
     rows, columns = data_df.shape
     col_moff = columns - 2

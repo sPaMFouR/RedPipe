@@ -13,13 +13,16 @@ import math
 import pwlf
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from datetime import date
 import matplotlib.pyplot as plt
 from jdcal import jd2gcal, gcal2jd
 from matplotlib.ticker import MultipleLocator
 from scipy.optimize import curve_fit, minimize
+from scipy.ndimage.filters import median_filter
 from astropy.modeling.blackbody import blackbody_lambda
 from scipy.interpolate import CubicSpline, UnivariateSpline
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -40,12 +43,18 @@ wave_data = np.linspace(3100, 9200, 1000)
 # Paths Of Directories
 # ------------------------------------------------------------------------------------------------------------------- #
 file_photvel = 'OUTPUT_PhotVel'
+core_file = 'core.out'
+shell_file = 'shell.out'
+comb_file = 'comb.out'
+obsbol_file = 'OUTPUT_DateWiseSNBolFlux'
+comb_cols = ['Phase', 'LumCore', 'LumShell']
 
 DIR_CURNT = os.getcwd()
 DIR_SNe = "/home/avinash/Dropbox/SNData/IIP_Data/"
-DIR_SPEC = '/home/avinash/Supernovae_Data/2016gfy/Spectroscopy/'
+DIR_SPEC = "/home/avinash/Supernovae_Data/2016gfy/Spectroscopy/"
 DIR_PHOT = "/home/avinash/Supernovae_Data/2016gfy/Photometry/"
 DIR_CODE = "/home/avinash/Dropbox/PyCharm/Reduction_Pipeline/"
+DIR_Model = "/home/avinash/Dropbox/ModelSNe/Nagy_LC2/"
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -269,8 +278,8 @@ def multicol_to_fluxdf(name, input_df):
     """
     input_df = input_df.set_index('JD')
     for column in ['Date', 'Phase']:
-        if column in input_df.columns:
-            input_df = input_df.drop([column], axis=1)
+        if column in input_df.columns.values:
+            input_df = input_df.drop(column, axis=1)
     data_arr = input_df.values
 
     size = data_arr.shape
@@ -664,8 +673,8 @@ def set_plotparams(ax_obj):
     ax_obj.xaxis.set_ticks_position('both')
     ax_obj.xaxis.set_major_locator(MultipleLocator(100))
     ax_obj.xaxis.set_minor_locator(MultipleLocator(10))
-    ax_obj.tick_params(axis='both', which='major', direction='in', length=8, width=1.4, labelsize=14)
-    ax_obj.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8, labelsize=14)
+    ax_obj.tick_params(axis='both', which='major', direction='in', length=8, width=1.4, labelsize=15)
+    ax_obj.tick_params(axis='both', which='minor', direction='in', length=4, width=0.8, labelsize=15)
     ax_obj.set_xlabel('Time Since Explosion [Days]', fontsize=16)
 
 
@@ -720,6 +729,7 @@ vabs_df = outputopt_df[outputopt_df['FILTER'] == 'V'].copy()
 # ------------------------------------------------------------------------------------------------------------------- #
 # Read SWIFT Data And Combine It With Optical Data To Calculate Bolometric Light Curve
 # Read Photospheric Velocity For Determining Radius
+# Read Nagy Fit To The Bolometric Light Curve
 # ------------------------------------------------------------------------------------------------------------------- #
 outputuv_df = calc_swiftuvdf(DIR_PHOT + '2016gfy_SWIFT.dat', name=name_SN)
 outputnet_df = pd.concat([outputopt_df, outputuv_df], sort=True)
@@ -727,7 +737,7 @@ outputuv_df = outputuv_df.set_index('JD').dropna(axis=0, how='any')
 bolm_df, fbolm_df = calc_snboldf(outputopt_df)
 # _, fbolm2_df = calc_snboldf(outputnet_df)
 
-temprad_df = fbolm_df[fbolm_df['Phase'] < 120].copy()
+temprad_df = fbolm_df[fbolm_df['Phase'] <= phase_nebstart].copy()
 temprad_df[['Temp', 'TempErr']] = temprad_df[['Temp', 'TempErr']] / 1000.
 temprad_df[['Rad', 'RadErr']] = temprad_df[['Rad', 'RadErr']] / (1000 * solar_rad)
 
@@ -735,6 +745,16 @@ vel_df = pd.read_csv(DIR_SPEC + file_photvel, sep='\s+').replace('INDEF', np.nan
 vel_df = vel_df.astype('float64')[['Phase', '5169', '5169Err']].dropna()
 vel_df['Rad'] = vel_df['Phase'] * vel_df['5169'] * 86400e5 / (1000 * solar_rad)
 vel_df['RadErr'] = vel_df['Phase'] * vel_df['5169Err'] * 86400e5 / (1000 * solar_rad)
+
+obsbol_df = pd.read_csv(DIR_PHOT + obsbol_file, sep='\s+')
+obsbol_df = obsbol_df[obsbol_df['Phase'] < 205]
+obsbol_df['LogLum'] = obsbol_df['Lum'].apply(lambda x: np.log10(x))
+
+comb_df = pd.read_csv(DIR_Model + comb_file, sep='\s+', header=None, names=comb_cols, comment='#')
+comb_df['Lum'] = comb_df['LumCore'] + comb_df['LumShell']
+comb_df['LogLumCore'] = comb_df['LumCore'].apply(lambda x: np.log10(x))
+comb_df['LogLumShell'] = comb_df['LumShell'].apply(lambda x: np.log10(x))
+comb_df['LogLum'] = comb_df['Lum'].apply(lambda x: np.log10(x))
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -943,7 +963,7 @@ for band, band_df in outputopt_df.groupby('FILTER'):
 handles, labels = ax_opt.get_legend_handles_labels()
 handles = [handles[3], handles[0], handles[4], handles[2], handles[1]]
 labels = [labels[3], labels[0], labels[4], labels[2], labels[1]]
-ax_opt.legend(handles, labels, fontsize=16, markerscale=2, frameon=False, loc=1)
+ax_opt.legend(handles, labels, fontsize=16, markerscale=2.5, frameon=False, loc=1)
 
 set_plotparams(ax_opt)
 ax_opt.set_ylim(22.0, 14.5)
@@ -964,10 +984,10 @@ for band, band_df in outputuv_df.groupby('FILTER'):
 handles, labels = ax_uv.get_legend_handles_labels()
 handlesuv = [handles[5], handles[1], handles[4], handles[2], handles[0], handles[3]]
 labelsuv = [labels[5], labels[1], labels[4], labels[2], labels[0], labels[3]]
-ax_uv.legend(handlesuv, labelsuv, fontsize=14, markerscale=2, loc=4)
+ax_uv.legend(handlesuv, labelsuv, fontsize=14, markerscale=2, loc=4, frameon=False)
 
 ax_uv.set_title('SWIFT-UVOT', fontsize=16)
-ax_uv.set_xlim(-0.5, 32)
+ax_uv.set_xlim(3, 32)
 # ax_uv.set_yticklabels([])
 ax_uv.yaxis.set_ticks_position('both')
 ax_uv.xaxis.set_ticks_position('both')
@@ -1089,6 +1109,8 @@ plt.close(fig_uvabs)
 # ------------------------------------------------------------------------------------------------------------------- #
 # Plot The V-Band Absolute Magnitude Light Curve
 # ------------------------------------------------------------------------------------------------------------------- #
+sns.set_palette(sns.color_palette('rocket'))
+
 fig_vabs = plt.figure(figsize=(9, 9))
 ax_vabs = fig_vabs.add_subplot(111)
 
@@ -1100,12 +1122,8 @@ for file_name in list_files:
         temp_df = data_df[data_df['FILTER'] == 'V'].copy()
         temp_df = temp_df[temp_df['Phase'] < max_epoch].sort_values(by='Phase')
         if not temp_df.empty:
-            if name != '1987A':
-                ax_vabs.plot(temp_df['Phase'], temp_df['AbsMag'], ls=':', markersize=7,
-                             marker=sndata_df.loc[name, 'Marker'], c=sndata_df.loc[name, 'Color'], label=name)
-            else:
-                ax_vabs.plot(temp_df['Phase'].iloc[::2], temp_df['AbsMag'].iloc[::2], ls=':', markersize=7,
-                             marker=sndata_df.loc[name, 'Marker'], c=sndata_df.loc[name, 'Color'], label=name)
+            ax_vabs.plot(temp_df['Phase'], temp_df['AbsMag'], ls=':', markersize=7,
+                         marker=sndata_df.loc[name, 'Marker'], label=name)
 
 ax_vabs.plot(vabs_df['Phase'], vabs_df['AbsMag'], color='k', ms=8, markerfacecolor='dimgrey', markeredgewidth=1,
              marker='o', ls='', alpha=0.8, label=name_SN)
@@ -1117,7 +1135,7 @@ ax_vabs.plot(nebarr, 0.0098 * nebarr - 16.5, ls='--', lw=1.2, c='indianred')
 
 ax_vabs.axvline(0, ls='--', c='dimgrey', lw=1.2)
 ax_vabs.axvline(90, ls='--', c='dimgrey', lw=1.2)
-ax_vabs.axvspan(0, 90, color='grey', alpha=0.2)
+ax_vabs.axvspan(0, 90, color='orange', alpha=0.1)
 
 ax_vabs.text(20, -12.6, s='OPTd~{0:.0f} d'.format(90), fontsize=12)
 ax_vabs.annotate(s='', xy=(0, -12.5), xytext=(90, -12.5), arrowprops=dict(arrowstyle='<->'))
@@ -1136,7 +1154,6 @@ fig_vabs.savefig('PLOT_VAbsLC.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()
 plt.close(fig_vabs)
 # ------------------------------------------------------------------------------------------------------------------- #
-
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Plot The Bolometric Light Curve
@@ -1191,6 +1208,95 @@ ax_bol.legend(fontsize=13, markerscale=2, loc=1, frameon=False)
 ax_bol.set_ylabel(r'Log [$\rm L_{UBVRI}\ (erg\ s^{-1})$]', fontsize=16)
 
 fig_bol.savefig('PLOT_BolometricLC.pdf', format='pdf', dpi=2000, bbox_inches='tight')
+plt.show()
+plt.close(fig_bol)
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Plot The Bolometric Light Curve
+# ------------------------------------------------------------------------------------------------------------------- #
+sns.set_palette(sns.color_palette(["#95a5a6", "#9b59b6", "#3498db", "#e74c3c", "#34495e", "#2ecc71"])[1:])
+
+# sns.set_palette(sns.xkcd_palette(["windows blue", "amber", "greyish", "faded green", "dusty purple"]))
+fig_bol = plt.figure(figsize=(16, 12))
+ax_bol = fig_bol.add_subplot(111)
+
+for file_name in list_files:
+    name = file_name.split('/')[-1].split('.')[0]
+    if name in ['1999em', '2004et', '2013ab', '2005cs', '2009N']:
+        data_df = pd.read_csv(file_name, sep='\s+', comment='#', engine='python')
+        temp_df = calc_boldf(name, multicol_to_fluxdf(name, data_df))
+        if not temp_df.empty:
+            temp_df = temp_df[temp_df['Phase'] < max_epoch].set_index('Phase').sort_index()
+            temp_df['Lum'] = median_filter(temp_df['Lum'].apply(lambda x: np.log10(x)), size=3)
+            ax_bol.plot(temp_df.index.values, temp_df['Lum'], ls=':', ms=9, alpha=0.7,
+                        marker=sndata_df.loc[name, 'Marker'], label=name)
+            ax_bol.plot(temp_df.index.values, temp_df['Lum'], ls=':', c='dimgrey', markerfacecolor='None', ms=9,
+                        alpha=0.7, markeredgewidth=0.7, marker=sndata_df.loc[name, 'Marker'], label='_nolegend_')
+
+ax_bol.plot(x, y, ls='', color='k', marker='o', markerfacecolor='grey',
+            markeredgewidth=1, markersize=12, alpha=0.9, label=name_SN)
+ax_bol.plot(x, y, ls='-.', lw=0.8, color='k', marker='o', markerfacecolor='None',
+            markeredgewidth=1, markersize=6, alpha=0.9, label='_nolegend_')
+ax_bol.plot(xarr, fit, ls='-', lw=2.5, c='blue', label='_nolegend_')
+
+ax_bol.set_ylim(39.6, 42.6)
+ax_bol.set_xlim(-12, max_epoch + 100)
+ax_bol.legend(fontsize=15, markerscale=2, loc='upper center', bbox_to_anchor=(0.5, 1.06),
+              fancybox=True, shadow=True, ncol=6)
+ax_bol.yaxis.set_ticks_position('both')
+ax_bol.xaxis.set_ticks_position('both')
+ax_bol.yaxis.set_major_locator(MultipleLocator(1))
+ax_bol.yaxis.set_minor_locator(MultipleLocator(0.1))
+ax_bol.xaxis.set_major_locator(MultipleLocator(100))
+ax_bol.xaxis.set_minor_locator(MultipleLocator(10))
+ax_bol.tick_params(axis='both', which='major', direction='in', length=10, width=1.8, labelsize=18)
+ax_bol.tick_params(axis='both', which='minor', direction='in', length=5, width=0.9, labelsize=18)
+ax_bol.set_xlabel('Time Since Explosion [Days]', fontsize=18)
+ax_bol.set_ylabel(r'Log [$\rm L_{UBVRI}\ (erg\ s^{-1})$]', fontsize=18)
+
+yticks = ax_bol.get_yticks(minor=True)
+ax_bol.text(xguess[0] - 12, 40.08, 'Rising Phase', color='navy', alpha=0.9, fontsize=14, rotation=90)
+ax_bol.text(xguess[1] - 21, 41.03, 'Early Plateau Phase [$s_1$={:.2f} dex / 100 d]'.format(s1), color='brown',
+            alpha=0.8, fontsize=14, rotation=90)
+ax_bol.text(xguess[2] - 33, 41.00, 'Late Plateau Phase [$s_2$={:.2f} dex / 100 d]'.format(s2), color='brown',
+            alpha=0.8, fontsize=14, rotation=90)
+ax_bol.text(xguess[3] - 20, 40.21, 'Transition Phase', color='navy', alpha=0.9, fontsize=14, rotation=90)
+ax_bol.text(xguess[3] + 132, 40.77, 'Nebular Phase [$s_3$={:.2f} dex / 100 d]'.format(s3), color='brown',
+            alpha=0.8, fontsize=14, rotation=-30)
+
+# ax_bol.axvspan(-10, xguess[0], color='blue', alpha=0.2)
+# ax_bol.axvspan(xguess[2], xguess[3], color='blue', alpha=0.3)
+ax_bol.axvspan(xguess[0], xguess[1], color='grey', alpha=0.2)
+ax_bol.axvspan(xguess[1], xguess[2], color='grey', alpha=0.2)
+ax_bol.axvspan(xguess[3], max_epoch + 100, color='grey', alpha=0.2)
+
+for xbreak in xguess:
+    ax_bol.axvline(xbreak, ls='--', lw=0.8, c='k')
+    ax_bol.axvline(xbreak, ls='--', lw=0.8, c='k')
+
+axins = inset_axes(ax_bol, height=4.5, width=7.7, loc=1)
+
+axins.plot(obsbol_df['Phase'], obsbol_df['LogLum'], c='k', markerfacecolor='dimgrey',
+           marker='*', ls='', ms=15, label='Observed LC')
+axins.plot(comb_df['Phase'], comb_df['LogLumCore'], c='r', ls='-', lw=0.9, label='Model Core LC (a=0)')
+axins.plot(comb_df['Phase'], comb_df['LogLumShell'], c='g', ls=':', lw=0.9, label='Model Shell LC (n=2)')
+axins.plot(comb_df['Phase'], comb_df['LogLum'], c='b', ls='--', lw=1.5, label='Model Combined LC')
+
+axins.set_ylim(40.75, 42.35)
+axins.set_xlim(-5, 210)
+axins.legend(markerscale=1.5, fontsize=13, frameon=False)
+axins.yaxis.set_ticks_position('both')
+axins.xaxis.set_ticks_position('both')
+axins.xaxis.set_major_locator(MultipleLocator(50))
+axins.xaxis.set_minor_locator(MultipleLocator(5))
+axins.yaxis.set_major_locator(MultipleLocator(0.5))
+axins.yaxis.set_minor_locator(MultipleLocator(0.05))
+axins.tick_params(axis='both', which='major', direction='in', width=1.4, length=8, labelsize=16)
+axins.tick_params(axis='both', which='minor', direction='in', width=0.8, length=4, labelsize=16)
+
+fig_bol.savefig('PLOT_BolometricNagyLC.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()
 plt.close(fig_bol)
 # ------------------------------------------------------------------------------------------------------------------- #

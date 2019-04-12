@@ -242,29 +242,34 @@ def calculate_instrmag(file_mag):
         mag_df      : Pandas DataFrame containing broadband magnitudes
         err_df      : Pandas DataFrame containing errors in magnitudes
     """
-    file_df = pd.read_csv(filepath_or_buffer=file_mag, sep="\s+", names=list_magcol, index_col=0, engine='python')
+    file_df = pd.read_csv(filepath_or_buffer=file_mag, sep='\s+', names=list_magcol, index_col=0)
     file_df = file_df.replace('INDEF', np.nan)
-    file_df[['MAG_1', 'MAG_2']] = file_df[['MAG_1', 'MAG_2']].astype('float64')
-
-    indexes = file_df.index.values
-    star_count = len(set(indexes))
+    file_df[['MAG_1', 'MAG_2', 'ERR_1', 'ERR_2']] = file_df[['MAG_1', 'MAG_2', 'ERR_1', 'ERR_2']].astype('float64')
+    star_count = len(set(file_df.index.values))
 
     file_df['FILTER'] = file_df['IFILTER'].apply(lambda x: str(x)[-1])
     file_df['APCOR'] = file_df['MAG_1'] - file_df['MAG_2']
+    file_df['APCORERR'] = add_series([file_df['ERR_1'], file_df['ERR_2']], err=True)
 
-    data_grouped = file_df[['APCOR', 'FILTER']].groupby(['FILTER'])
-    mean = {}
-    stdev = {}
+    data_grouped = file_df[['APCOR', 'APCORERR', 'FILTER']].dropna(how='any').groupby(['FILTER'])
+    apcor_mean = {}
+    apcor_meanerr = {}
+    apcor_stdev = {}
 
     for band in set(file_df['FILTER'].values):
-        temp_list = reject(data_grouped.get_group(name=band)['APCOR'].tolist(), iterations=int(star_count / 3) + 1)
-        mean[band] = np.mean(temp_list)
-        stdev[band] = np.std(temp_list)
+        band_group = data_grouped.get_group(name=band)
+        apcor_vals = reject(band_group['APCOR'].tolist(), iterations=int(star_count / 3) + 1)
+        apcor_errs = band_group.isin({'APCOR': apcor_vals})['APCORERR']
 
-    file_df['COR_MEAN'] = file_df['FILTER'].apply(lambda x: mean[x])
-    file_df['COR_STD'] = file_df['FILTER'].apply(lambda x: stdev[x])
-    file_df['INSTR_MAG'] = file_df['MAG_1'] - file_df['COR_MEAN']
-    file_df['INSTR_ERR'] = add_series([file_df['COR_STD'], file_df['ERR_1']], err=True)
+        apcor_mean[band] = np.mean(apcor_vals)
+        apcor_stdev[band] = np.std(apcor_vals)
+        apcor_meanerr[band] = np.sum([val ** 2 for val in apcor_errs]) ** 0.5
+
+    file_df['APCOR_MEAN'] = file_df['FILTER'].apply(lambda x: apcor_mean[x])
+    file_df['APCOR_MEANERR'] = file_df['FILTER'].apply(lambda x: apcor_stdev[x])
+    file_df['APCOR_STD'] = file_df['FILTER'].apply(lambda x: apcor_stdev[x])
+    file_df['INSTR_MAG'] = file_df['MAG_1'] - file_df['APCOR_MEAN']
+    file_df['INSTR_ERR'] = add_series([file_df['APCOR_STD'], file_df['APCOR_MEANERR'], file_df['ERR_1']], err=True)
 
     file_df = file_df.round(int(precision))
     file_df = file_df[['FILTER', 'INSTR_MAG', 'INSTR_ERR']]
@@ -273,15 +278,15 @@ def calculate_instrmag(file_mag):
     mag_df = unorgmag_to_ubvriframe(file_df[['FILTER', 'INSTR_MAG']])
     err_df = unorgmag_to_ubvriframe(file_df[['FILTER', 'INSTR_ERR']])
 
-    date = file_mag.split("_")[1]
-    mag_df.to_csv("OUTPUT_instrmag_" + date, sep=" ", index=True)
-    err_df.to_csv("OUTPUT_instrerr_" + date, sep=" ", index=True)
+    date = file_mag.split('_')[1]
+    mag_df.to_csv('OUTPUT_instrmag_' + date, sep=' ', index=True)
+    err_df.to_csv('OUTPUT_instrerr_' + date, sep=' ', index=True)
 
     net_df = pd.DataFrame()
     for column in mag_df:
-        net_df[column] = mag_df[column].apply(lambda x: str(x) + "+/-") + err_df[column].apply(lambda x: str(x))
+        net_df[column] = mag_df[column].apply(lambda x: str(x) + '+/-') + err_df[column].apply(lambda x: str(x))
 
-    net_df.to_csv("OUTPUT_instr_" + date, sep=" ", index=True)
+    net_df.to_csv('OUTPUT_instr_' + date, sep=' ', index=True)
 
     return mag_df, err_df
 
@@ -291,7 +296,7 @@ def calculate_instrmag(file_mag):
 # ------------------------------------------------------------------------------------------------------------------- #
 # Calculate Instrumental Magnitudes For Each Day From The Mag Files
 # ------------------------------------------------------------------------------------------------------------------- #
-list_mag = group_similar_files("", "*_mag4")
+list_mag = group_similar_files('', '*_mag4')
 
 for file_name in list_mag:
     calculate_instrmag(file_name)

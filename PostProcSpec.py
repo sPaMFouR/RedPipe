@@ -100,8 +100,8 @@ upperclip_gr7 = 7720
 lowerclip_gr8 = 5900
 upperclip_gr8 = 9150
 
-combclip_gr7 = 6200
-combclip_gr8 = 6100
+combclip_gr7 = 7055
+combclip_gr8 = 6975
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -571,7 +571,8 @@ def scombine(ctext):
     task.unlearn()
 
     task.combine = 'median'                                 # Type of combine operation
-    task.reject = 'avsigclip'                               # Type of rejection
+#     task.reject = 'avsigclip'                               # Type of rejection
+    task.scale = 'median'                                   # Image Scaling
     task.sample = sampling_region                           # Wavelength Sampling Region
     task.rdnoise = float(read_noise)                        # CCD Readout Noise (In e-)
     task.gain = float(ccd_gain)                             # CCD Gain (In e-/ADU)

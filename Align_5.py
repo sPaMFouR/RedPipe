@@ -542,6 +542,7 @@ ref_file = 'stars.coo'
 # Removes Residual Files From Previous Run
 # ------------------------------------------------------------------------------------------------------------------- #
 if rmv_files:
+    remove_similar_files('list_*')
     remove_similar_files('a_*.fits')
     remove_similar_files('ca_*.fits')
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -552,15 +553,15 @@ if rmv_files:
 # ------------------------------------------------------------------------------------------------------------------- #
 prefix = 'ca_'
 text_list = 'list_align'
-group_similar_files(str(text_list), str(ctext))
+group_similar_files(text_list, common_text=ctext)
 
 if bool_coarse and not bool_precise:
-    align_imgproc(textlist_images=str(text_list), scale_exponent=0.4, prefix_str=prefix)
+    align_imgproc(textlist_images=text_list, scale_exponent=0.4, prefix_str=prefix)
 elif bool_coarse and bool_precise:
-    align_imgproc(textlist_images=str(text_list), scale_exponent=0.4, prefix_str='a_')
+    align_imgproc(textlist_images=text_list, scale_exponent=0.4, prefix_str='a_')
     prefix = 'c'
     text_list = 'list_align_coarse'
-    group_similar_files(str(text_list), 'a_*.fits')
+    group_similar_files(text_list, 'a_*.fits')
 
 if bool_precise:
     if choice_precise:
@@ -574,7 +575,7 @@ if bool_precise:
 # ------------------------------------------------------------------------------------------------------------------- #
 # Logs The Precision Of Images Aligned In The File 'log_alignment'
 # ------------------------------------------------------------------------------------------------------------------- #
-group_similar_files('list_aligned', str(prefix) + '*.fits')
+group_similar_files('list_aligned', prefix + ctext)
 check_aligned('list_aligned', 'log_after_alignment')
 
 # try:

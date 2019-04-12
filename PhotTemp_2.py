@@ -10,10 +10,12 @@ import os
 import re
 import sys
 import glob
+import datetime
 import numpy as np
 import pandas as pd
 import easygui as eg
 from pyraf import iraf
+import dateutil.parser as dparser
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -390,6 +392,7 @@ def txdump(common_text, output_file):
 
     file_temp = 'temp_dump'
     group_similar_files(file_temp, common_text=common_text)
+    remove_file(output_file)
     task(textfile='@' + file_temp, fields=fields, expr='yes', Stdout=output_file)
     remove_file(file_temp)
 
@@ -453,7 +456,7 @@ def read_magfile(file_name, col_nos, fmt='{:>8}', title_rows=0):
     else:
         print ("Invalid Format Of Entering Column Numbers")
         sys.exit(1)
-        
+
     data_file = [file_df.iloc[:, index].tolist() for index in col_indexes]
 
     for col_index in range(0, len(col_indexes)):
@@ -670,8 +673,17 @@ aper_phot(textlist_temp, textlist_fwhm, coord_sn, phot_radius=aperture_values, d
 # Groups Mag Files From PHOT Task Into A Separate List & Makes A List Of Dates On Which Observation Was Done
 # ------------------------------------------------------------------------------------------------------------------- #
 mag_suffix = 1
+
+list_mdates = []
+for file_name in list_mag:
+    temp_name = file_name.split(OBJECT_NAME)[0]
+    date = dparser.parse(temp_name, fuzzy=True)
+    date = date.strftime('%Y-%m-%d')
+    list_mdates.append(date)
+list_dates = set(list_mdates)
+
 list_mag = group_similar_files('', common_text='ts_*.mag.1')
-list_dates = set([file_name[6:16] for file_name in list_mag])
+# list_dates = set([file_name[6:16] for file_name in list_mag])
 # ------------------------------------------------------------------------------------------------------------------- #
 
 

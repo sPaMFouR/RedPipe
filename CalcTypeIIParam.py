@@ -21,20 +21,19 @@ NaID_MWErr = 0.08
 NaID_host = 0.89
 NaID_hostErr = 0.13
 VIcolor = 0.831
-VIcolorErr = 0.107
+VIcolorErr = 0.041
 VIphase = 84.0
 phase = 200
 steepness = 0.121
-deltat = 88
+deltat = 90
 deltatErr = 5
 vph = 3913
 vphErr = 320
-mv50 = -17.16
-mv50Err = 0.37
-
+mv50 = -16.74
+mv50Err = 0.22
 
 EBV_mag = 0.21
-EBV_Err = 0.11
+EBV_Err = 0.05
 
 H0 = 73.52
 Ab = 4.06 * EBV_mag
@@ -46,10 +45,10 @@ AvErr = 3.04 * EBV_Err
 Ai = 1.71 * EBV_mag
 AiErr = 1.71 * EBV_Err
 
-VIplus50 = 0.52
-VIplus50Err = 0.02
-VIminus30 = 0.64
-VIminus30Err = 0.02
+VIplus50 = 0.68
+VIplus50Err = 0.04
+VIminus30 = 0.83
+VIminus30Err = 0.04
 
 vplus50 = 4272
 vplus50Err = 53
@@ -71,8 +70,13 @@ Iplus50Err = 0.02
 Iminus30 = 15.37
 Iminus30Err = 0.02
 
-dict_bol = {198.7: {'BolLum': 1.047e41, 'BolErr': 1.504e40}, 212.8: {'BolLum': 9.694e40, 'BolErr': 1.393e40},
-            237.8: {'BolLum': 8.064e40, 'BolErr': 1.158e40}, 240.8: {'BolLum': 7.012e40, 'BolErr': 1.008e40}}
+dict_bol = {198.7: {'BolLum': 6.551e40, 'BolErr': 1.224e40}, 212.8: {'BolLum': 6.057e40, 'BolErr': 1.132e40},
+            237.8: {'BolLum': 5.049e40, 'BolErr': 9.432e39}, 240.8: {'BolLum': 4.753e40, 'BolErr': 8.879e39}}
+# dict_bol = {198.7: {'BolLum': 7.3054e40, 'BolErr': 1.1432e40}, 175.8: {'BolLum': 9.8212e40, 'BolErr': 1.5369e40},
+#             237.8: {'BolLum': 5.6306e40, 'BolErr': 8.8110e39}, 240.8: {'BolLum': 5.3004e40, 'BolErr': 8.2943e39}}
+# dict_bol = {198.7: {'BolLum': 7.3054e40, 'BolErr': 1.1432e40}, 212.8: {'BolLum': 6.7545e40, 'BolErr': 1.057e40},
+#            237.8: {'BolLum': 5.6306e40, 'BolErr': 8.8110e39}, 240.8: {'BolLum': 5.3004e40, 'BolErr': 8.2943e39}}
+
 data_bol = pd.DataFrame(dict_bol).T
 data_bol.index.name = 'Phase'
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -116,7 +120,7 @@ def get_hamuyni(data_bol):
     lum = data_bol['BolLum'].mean()
     phase = np.mean(data_bol.index.values)
     lumErr1 = data_bol['BolLum'].std()
-    lumErr2 = data_bol['BolErr'].apply(lambda x: x / data_bol.shape[0]).mean()
+    lumErr2 = np.sqrt(data_bol['BolErr'].apply(lambda x: (x / data_bol.shape[0]) ** 2).sum())
     nimass = hamuyni(lum, phase)
     niErr = hamuyni(lum + (lumErr1 ** 2 + lumErr2 ** 2) ** 0.5, phase) - nimass
     print "Mean Phase = {0:0.1f}".format(phase)
@@ -145,9 +149,20 @@ def get_litvinovaparams(mv, deltat, vph):
     logM = 0.234 * mv + 2.91 * np.log10(deltat) + 1.96 * np.log10(vph) - 1.829
     logR = -0.572 * mv - 1.07 * np.log10(deltat) - 2.74 * np.log10(vph) - 3.350
 
-    print (r"Explosion Energy = {0:0.3f}".format(10 ** logE))
-    print (r"Ejecta Mass = {0:0.3f}".format(10 ** logM))
-    print (r"Progenitor Radius = {0:0.3f}".format(10 ** logR))
+    print (r"Explosion Energy = {0:0.3f}e50".format(10 ** logE))
+    print (r"Ejecta Mass = {0:0.3f} Msolar".format(10 ** logM))
+    print (r"Progenitor Radius = {0:0.3f} Rsolar".format(10 ** logR))
+
+
+def get_popovparams(mv, deltat, vph):
+    vph = vph / 1000
+    logE = 0.4 * mv + 4.0 * np.log10(deltat) + 5.0 * np.log10(vph) - 4.311
+    logM = 0.4 * mv + 4.0 * np.log10(deltat) + 3.0 * np.log10(vph) - 2.089
+    logR = -0.8 * mv - 2.0 * np.log10(deltat) - 4.0 * np.log10(vph) - 4.278
+
+    print (r"Explosion Energy = {0:0.3f}e50".format(10 ** logE))
+    print (r"Ejecta Mass = {0:0.3f} Msolar".format(10 ** logM))
+    print (r"Progenitor Radius = {0:0.3f} Rsolar".format(10 ** logR))
 
 
 def get_scmhamuy(band, Alambda, AlambdaErr, vphot, vErr, mag, magErr):
@@ -255,6 +270,8 @@ get_hamuyni(data_bol)
 get_steepnessni(steepness)
 
 get_litvinovaparams(mv50, deltat, vph)
+get_litvinovaparams(mv50-mv50Err, deltat+deltatErr, vph+vphErr)
+# get_popovparams(mv50, deltat, vph)
 
 dist = np.zeros(7)
 dist_err = np.zeros(7)
@@ -269,6 +286,7 @@ dist[4], dist_err[4] = get_scmolivares('B', vminus30, vminus30Err, Bminus30, Bmi
 dist[5], dist_err[5] = get_scmolivares('V', vminus30, vminus30Err, Vminus30, Vminus30Err, VIminus30, VIminus30Err)
 dist[6], dist_err[6] = get_scmolivares('I', vminus30, vminus30Err, Iminus30, Iminus30Err, VIminus30, VIminus30Err)
 
+print get_scmolivares('V', 2252, 54, 17.31, 0.02, 0.954, 0.01)
 print np.round(np.mean(dist), 2)
 print np.round((np.std(dist) ** 2 + np.sum(np.square(dist_err)) / 7 ** 2) ** 0.5, 2)
 # ------------------------------------------------------------------------------------------------------------------- #
