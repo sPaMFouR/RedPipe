@@ -10,41 +10,28 @@ import os
 import re
 import sys
 import glob
-import datetime
 import numpy as np
-import pandas as pd
 import easygui as eg
 from pyraf import iraf
-import dateutil.parser as dparser
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Observatory Site Details
+# Home Directory & Its Component Folders
 # ------------------------------------------------------------------------------------------------------------------- #
-OBS_NAME = 'Indian Astronomical Observatory, Hanle'
-OBS_LONG = '78:57:51'
-OBS_LAT = '32:46:46'
-OBS_ALT = 4486
-OBS_TIMEZONE = +5.5
+DIR_HOME = os.getcwd()
+dir_text = eg.enterbox(msg='Enter The Home Directory Containing Component Folders: ', title='Home Directory',
+                       default=DIR_HOME)
 # ------------------------------------------------------------------------------------------------------------------- #
-
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Telescope CCD Specifications
 # ------------------------------------------------------------------------------------------------------------------- #
-read_noise = 4.87
-ccd_gain = 1.22
-data_max = 55000
-OBJECT_NAME = '2016gfy'
-# ------------------------------------------------------------------------------------------------------------------- #
+gain = 11.98
+read_noise = 7
+data_max = 50000
 
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Extinction Coefficients (In Magnitudes) For Hanle In Different Photometric  Bands
-# ------------------------------------------------------------------------------------------------------------------- #
-eeta = {'7BesU': 0.36, '6BesB': 0.21, '5BesV': 0.12, '4BesR': 0.09, '3BesI': 0.05}
-eeta_err = {'7BesU': 0.07, '6BesB': 0.04, '5BesV': 0.04, '4BesR': 0.04, '3BesI': 0.03}
+BackSub = False         # 'True' To Switch On Background Subtraction
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -67,7 +54,6 @@ iraf.ccdred(_doprint=0)
 iraf.digiphot(_doprint=0)
 iraf.daophot(_doprint=0)
 iraf.ptools(_doprint=0)
-iraf.ccdred.instrument = "ccddb$kpno/camera.dat"
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -102,7 +88,7 @@ def remove_similar_files(common_text):
 
 
 def group_similar_files(text_list, common_text, exceptions=''):
-    """s
+    """
     Groups similar files based on the string "common_text". Writes the similar files
     onto the list 'text_list' (only if this string is not empty) and appends the similar
     files to a list 'python_list'.
@@ -128,8 +114,8 @@ def group_similar_files(text_list, common_text, exceptions=''):
     list_files.sort()
     if len(text_list) != 0:
         with open(text_list, 'w') as f:
-            for file_name in list_files:
-                f.write(file_name + '\n')
+            for index in range(0, len(list_files)):
+                f.write(list_files[index] + '\n')
 
     return list_files
 
@@ -149,53 +135,62 @@ def text_list_to_python_list(text_list):
             python_list = f.read().split()
             return python_list
     else:
-        print ("Error : File '{0}' Not Found".format(text_list))
+        print ("Error : File " + text_list + " Not Found")
         sys.exit(1)
 
 
-def list_statistics(list_values):
+def list_statistics(python_list):
     """
-    Returns the statistics of the list of elements in the input 'list_values'.
+    Returns the statistics of the list of elements in the input 'python_list'.
     Args:
-        list_values : Input list of elements
+        python_list  : Input list of elements
     Returns:
-        value_mean  : Mean of the list of elements
-        value_median: Median of the list of elements
-        value_std   : Standard Deviation of the list of elements
+        value_mean   : Mean of the list of elements
+        value_median : Median of the list of elements
+        value_std    : Standard Deviation of the list of elements
     """
-    value_mean = np.mean(list_values)
-    value_median = np.median(list_values)
-    value_std = np.std(list_values)
+    value_mean = np.mean(python_list)
+    value_median = np.median(python_list)
+    value_std = np.std(python_list)
 
     return value_mean, value_median, value_std
 
 
-def reject(list_values, iterations=2):
+def reject(python_list):
     """
-    Rejects outliers from the input 'list_values'.
+    Rejects outliers from the input 'python_list'.
     Args:
-        list_values : Input list of elements
-        iterations  : No. of iterations of rejection to be run on the input list
+        python_list : Input list of elements
     Returns:
-        list_reject : Output list after rejecting outliers from the input 'list_values'
+        reject_list : Output list after rejecting outliers from the input 'python_list'
     """
-    list_reject = filter(lambda x: x != 'INDEF', list_values)
-    list_reject = map(float, list_reject)
-    list_reject.sort()
+    reject_list = []
+    pop = False
+    for index in range(0, len(python_list)):
+        reject_list.append(float(python_list[index]))
 
-    for _ in range(0, iterations):
-        if len(list_values) > 2:
-            value_mean, value_median, value_std = list_statistics(list_reject)
+    reject_list.sort()
+    value_mean, value_median, value_std = list_statistics(reject_list)
 
-            if abs(list_reject[0] - value_median) < abs(list_reject[-1] - value_median):
-                remove_index = -1
-            else:
-                remove_index = 0
+    if abs(reject_list[0] - value_median) < abs(reject_list[-1] - value_median):
+        remove_index = -1
+    else:
+        remove_index = 0
 
-            if abs(list_reject[remove_index] - value_median) > value_std:
-                list_reject.pop(remove_index)
+    if abs(reject_list[remove_index] - value_median) > value_std:
+        reject_list.pop(remove_index)
+        pop = True
 
-    return list_reject
+    if pop:
+        value_mean, value_median, value_std = list_statistics(reject_list)
+        if abs(reject_list[0] - value_median) < abs(reject_list[-1] - value_median):
+            remove_index = -1
+        else:
+            remove_index = 0
+        if abs(reject_list[remove_index] - value_median) > 2 * value_std:
+            reject_list.pop(remove_index)
+
+    return reject_list
 
 
 def python_list_to_text_list(python_list, text_list):
@@ -212,24 +207,6 @@ def python_list_to_text_list(python_list, text_list):
             f.write(str(element) + '\n')
 
 
-def zip_list(list_lists):
-    """
-    Combines all the lists in a list to a single list element-wise.
-    Args:
-        list_lists  : List of all the lists which needs to be zipped
-    Returns:
-        new_list    : List with the combined elements
-    """
-    new_list = []
-    for index in range(0, len(list_lists[0])):
-        value = ''
-        for val in range(0, len(list_lists)):
-            value += list_lists[val][index]
-        new_list.append(str(value))
-
-    return new_list
-
-
 def display_text(text_to_display):
     """
     Displays text mentioned in the string 'text_to_display'
@@ -239,7 +216,7 @@ def display_text(text_to_display):
         None
     """
     print ("\n" + "# " + "-" * (12 + len(text_to_display)) + " #")
-    print ("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
+    print ("# " + "-" * 5 + " " + text_to_display + " " + "-" * 5 + " #")
     print ("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -267,13 +244,12 @@ def imexam_fwhm(text_list, coord_file, log_imexam='log_imexam'):
     task.unlearn()
 
     for file_name in list_files:
-        task.logfile = log_imexam	            # Log File To Record Output Of The Commands
+        task.logfile = str(log_imexam)              # Log File To Record Output Of The Commands
         task.keeplog = 'yes'                        # Log Output Results?
         task.defkey = 'a'                           # Default Key For Cursor x-y Input List
-        task.imagecur = coord_file	            # Image Display Cursor Input
+        task.imagecur = str(coord_file)             # Image Display Cursor Input
         task.use_display = 'no'                     # Use The Image Display?
 
-        display_text("CURRENT FILE - " + file_name)
         task(input=str(file_name), frame=1)
 
 
@@ -297,7 +273,7 @@ def data_pars(fwhm_value, data_max):
     task.noise = 'poisson'                          # Noise Model Used To Estimate Uncertainties In APPHOT Magnitudes
     task.sigma = 'INDEF'                            # Standard Deviation Of The Sky Pixels
     task.readnoise = read_noise                     # Readout Noise Of The CCD In Electrons
-    task.epadu = ccd_gain                           # Gain Of The CCD In Electrons Per ADU
+    task.epadu = gain                               # Gain Of The CCD In Electrons Per ADU
     task.exposure = EXPTIME_keyword                 # Exposure Time Keyword In Image Header
     task.airmass = AIRMASS_keyword                  # Airmass Keyword In Image Header
     task.filter = FILTER_keyword                    # Filter Keyword In Image Header
@@ -329,26 +305,29 @@ def fitsky_pars(fwhm_value):
     task = iraf.noao.digiphot.daophot.fitskypars
     task.unlearn()
 
-    task.unlearn()
-    task.salgorithm = 'centroid'                    # Sky Fitting Algorithm
-    task.annulus = 5 * float(fwhm_value)            # Inner Radius Of Sky Annulus In Scale Units
-    task.dannulus = 3                               # Width Of Sky Annulus In Scale Units
+    if BackSub:
+        task.salgorithm = 'centroid'                        # Sky Fitting Algorithm
+        task.annulus = 5 * float(fwhm_value)            # Inner Radius Of Sky Annulus In Scale Units
+        task.dannulus = 3                               # Width Of Sky Annulus In Scale Units
+    else:
+        task.salgorithm = 'constant'                    # Sky Fitting Algorithm
+        task.skyvalue = 0                               # User Supplied Sky Value
 
 
-def phot_pars(aperture_values):
+def phot_pars():
     """
     Edits the photometry parameters(PHOTPARS) required by the DAOPHOT tasks.
     Args:
-        aperture_values : Mean FWHM value for the image file
+        None
     Returns:
         None
     """
     task = iraf.noao.digiphot.daophot.photpars
     task.unlearn()
 
-    task.weighting = 'constant'                     # Photometric Weighting Scheme
-    task.aperture = aperture_values                 # List Of Aperture Radii In Scale Units
-    task.zmag = 25                                  # Zero Point Of Magnitude Scale
+    task.weighting = 'constant'                             # Photometric Weighting Scheme
+    task.aperture = "12,15,18,20,22,25,28,30,32,35,40"   # List Of Aperture Radii In Scale Units
+    task.zmag = 25                                          # Zero Point Of Magnitude Scale
 
 
 def phot(file_name, coord_file):
@@ -392,84 +371,8 @@ def txdump(common_text, output_file):
 
     file_temp = 'temp_dump'
     group_similar_files(file_temp, common_text=common_text)
-    remove_file(output_file)
-    task(textfile='@' + file_temp, fields=fields, expr='yes', Stdout=output_file)
+    task(textfile='@' + file_temp, fields=fields, expr="yes", Stdout=output_file)
     remove_file(file_temp)
-
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Functions For Accessing & Manipulating Text File Data
-# ------------------------------------------------------------------------------------------------------------------- #
-
-def read_column(file_name, col_index, title_rows=0):
-    """
-    Extracts the specified column as a list from a text file.
-    Args:
-        file_name   : Text file from which the specified column has to be extracted
-        col_index   : Index of the column to be extracted
-        title_rows  : No. of rows used for title description
-    Returns:
-        data_column : List of all the elements extracted from the column
-    """
-    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows, engine='python')
-    data_column = file_df.iloc[:, col_index].tolist()
-
-    return data_column
-
-
-def read_file(file_name, title_rows=0):
-    """
-    Extracts the file data as a list of columns from a text file.
-    Args:
-        file_name   : Text file from which file data has to be extracted
-        title_rows  : No. of rows used for title description
-    Returns:
-        data_file   : List of all columns extracted from the text file
-    """
-    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows, engine='python')
-    data_file = [file_df.iloc[:, index].tolist() for index in range(0, file_df.shape[1])]
-
-    return data_file
-
-
-def read_magfile(file_name, col_nos, fmt='{:>8}', title_rows=0):
-    """
-    Extracts the mag file data as a list of columns specified by 'col_nos' from a text file and formats
-    the list according to the format specified in 'fmt'.
-    Args:
-        file_name   : Text file from which file data has to be extracted
-        col_nos     : Indexes of columns to be read from the file ('7:9' or '7,8,9')
-        fmt         : Format of storing data in the list
-        title_rows  : No. of rows used for title description
-    Returns:
-        data_file   : List of all columns extracted from the text file
-    """
-    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows, engine='python')
-    rows, columns = file_df.shape
-
-    if re.search(':', col_nos):
-        col_indexes = range(int(col_nos.split(':')[0]), int(col_nos.split(':')[-1]), 1)
-    elif re.search(',', col_nos):
-        col_indexes = col_nos.split(',')
-    else:
-        print ("Invalid Format Of Entering Column Numbers")
-        sys.exit(1)
-
-    data_file = [file_df.iloc[:, index].tolist() for index in col_indexes]
-
-    for col_index in range(0, len(col_indexes)):
-        for row_index in range(0, rows):
-            try:
-                float(data_file[col_index][row_index])
-            except ValueError:
-                new_fmt = fmt[0:3] + 's}'
-                data_file[col_index][row_index] = new_fmt.format(str(data_file[col_index][row_index]))
-            else:
-                data_file[col_index][row_index] = fmt.format(float(data_file[col_index][row_index]))
-
-    return data_file
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -478,139 +381,64 @@ def read_magfile(file_name, col_nos, fmt='{:>8}', title_rows=0):
 # Functions For Performing Photometry
 # ------------------------------------------------------------------------------------------------------------------- #
 
-def calculate_fwhm(textlist_files, coord_file='stars.coo', log_imexam='log_imexam'):
+def calculate_fwhm(text_list_files, coord_file='stars.coo', log_imexam='log_imexam'):
     """
     Calculates the Mean FWHM of all the files in the list 'list_files'. It determines the FWHM using
     IMEXAMINE task on the stars mentioned in the file "stars.coo".
     Args:
-        textlist_files  : Text list containing names of FITS files whose FWHM is to be determined
+        text_list_files : Text list containing names of FITS files whose FWHM is to be determined
         coord_file      : Text file listing the coordinates of selected stars in the field
         log_imexam      : Name of the text list to record log of IMEXAM
     Returns:
         list_mean_fwhm  : Python list containing Mean FWHM of all the FITS files
     """
-    imexam_fwhm(textlist_files, coord_file=coord_file, log_imexam=log_imexam)
-    coord_df = pd.read_csv(coord_file, sep="\s+", header=None, engine='python')
-    data_df = pd.read_csv(log_imexam, sep="\s+", comment="#", header=None, engine='python')
-    count = coord_df.shape[0]
-    rows, columns = data_df.shape
-    col_moff = columns - 2
+    imexam_fwhm(text_list_files, coord_file=coord_file, log_imexam=log_imexam)
 
-    list_fwhm = [data_df.iloc[0 + count * i: (i + 1) * count, col_moff].tolist() for i in range(0, rows / count)]
+    data_file = []
+    with open(log_imexam, 'r') as fin:
+        for line in fin:
+            if not line.startswith('#'):
+                data_file += line.rstrip().split()
+
+    columns = 15
+    rows = len(data_file) / columns
+    no_of_stars = len(text_list_to_python_list(coord_file)) / 2
 
     list_mean_fwhm = []
-    for index, fwhm_values in enumerate(list_fwhm):
-        mean = float(np.mean(a=reject(fwhm_values)))
-        list_mean_fwhm.append(round(mean, 1))
+    temp_list = []
+    for index in range(0, rows):
+        temp_list.append(data_file[14 + index * columns])
+        if len(temp_list) % no_of_stars == 0:
+            mean = float(np.mean(np.array(reject(temp_list))))
+            list_mean_fwhm.append(round(mean, 1))
+            temp_list = []
 
     return list_mean_fwhm
 
 
-def extract_val(aper_string, fwhm):
-    """
-    Calculates apertures to be calculated in terms of 'Pixels' from a string supplying apertures
-    in terms of FWHM value of the image.
-    Args:
-        aper_string : String specifing apertures in terms of FWHM of the image
-        fwhm        : FWHM of the image to which photometry is being done
-    Returns:
-        aper_values : String containing apertures to be used for photometry
-    """
-    if re.search(':', aper_string):
-        list_aper = aper_string.split(':')
-        if len(list_aper) == 2:
-            list_aper = np.arange(float(list_aper[0]), 1 + float(list_aper[1]), 1)
-        elif len(aper_string.split(':')) == 3:
-            list_aper = np.arange(float(list_aper[0]), float(list_aper[2]) + float(list_aper[1]), float(list_aper[2]))
-    else:
-        list_aper = aper_string.split(',')
-
-    aper_values = ""
-    for value in list_aper:
-        aper_values += str(float(value) * float(fwhm)) + ","
-
-    return aper_values[:-1]
-
-
-def aper_phot(textlist_files, textlist_fwhm, coord_file, phot_radius='1', data_max='INDEF'):
+def aper_phot(text_list_files, text_list_fwhm, coord_file, data_max='INDEF'):
     """
     Performs aperture photometry (PHOT task) on the files in the list 'list_files'. Selects candidate
     stars from the coordinate file 'coord_file'.
     Args:
-        textlist_files  : List of all FITS files on which aperture photometry is to be performed
-        textlist_fwhm   : List of Mean FWHM values of all the FITS files
+        text_list_files : List of all FITS files on which aperture photometry is to be performed
+        text_list_fwhm  : List of Mean FWHM values of all the FITS files
         coord_file      : Name of the coordinate file containing candidate star
-        phot_radius     : String containing the apertures at which photometry is to be done("1,4")
         data_max        : Maximum good pixel value
     Returns:
         None
     """
-    list_files = text_list_to_python_list(textlist_files)
-    list_fwhm = text_list_to_python_list(textlist_fwhm)
+    list_files = text_list_to_python_list(text_list_files)
+    list_fwhm = text_list_to_python_list(text_list_fwhm)
 
     for index in range(0, len(list_files)):
-        aperture_values = extract_val(str(phot_radius), list_fwhm[index])
-
         data_pars(list_fwhm[index], data_max)
         center_pars()
         fitsky_pars(list_fwhm[index])
-        phot_pars(aperture_values)
+        phot_pars()
         phot(file_name=list_files[index], coord_file=coord_file)
 
-    display_text('Aperture Photometry Is Completed For Aperture Values (x FWHM): ' + str(phot_radius))
-
-
-def tabular_mag(input_file, output_file):
-    """
-    Takes the output from a MAG or ALS file and computes a tabular magnitude file.
-    Args:
-        input_file  : Input MAG or ALS file
-        output_file : Name of the output file onto which the tabular magnitudes are to be written
-    Returns:
-        None
-    """
-    data_file = read_file(input_file)
-    [star_id, _, ifilter, xcenter, ycenter, sky_counts, airmass] = data_file[0:7]
-    list_images = ['ca_' + input_file.split('_')[1] + '_fbs_' + OBJECT_NAME + '-' + band[-1].lower() + '.fits'
-                   for band in ifilter]
-
-    col_data = 7
-    star_count = max(map(int, star_id))
-    columns = len(data_file)
-    rows = len(data_file[0])
-    apertures = (columns - col_data) / 3
-
-    list_col = []
-    for index in range(0, 3):
-        list_col.append(str(col_data + index * apertures) + ':' + str(col_data + (index + 1) * apertures))
-
-    list_aper = zip_list(read_magfile(str(input_file), col_nos=list_col[0], fmt="{:8.2f}"))
-    list_mag = zip_list(read_magfile(str(input_file), col_nos=list_col[1], fmt="{:10.4f}"))
-    list_err = zip_list(read_magfile(str(input_file), col_nos=list_col[2], fmt="{:8.3f}"))
-
-    aper_names = ""
-    mag_names = ""
-    err_names = ""
-    for value in range(1, apertures + 1):
-        aper_names += "{:8s}".format("AP_" + str(value))
-        mag_names += "{:10s}".format("MAG_" + str(value))
-        err_names += "{:8s}".format("ERR_" + str(value))
-
-    with open(output_file, 'w') as fout:
-        fout.write("{0:>4s}{1:>10s}{2:>11s}{3:>13s}  {4}{5}{6}\n\n".format
-                   ("ID", "XCENTER", "YCENTER", "SKY_COUNTS", aper_names, mag_names, err_names))
-
-        for index in range(0, rows):
-            if index % star_count == 0:
-                fout.write("# IMAGE #{0} - {1}, FILTER - {2}, AIRMASS - {3}\n".format
-                           ((index / star_count) + 1, list_images[index], ifilter[index], airmass[index]))
-
-            fout.write("{0:>3.0f}{1:>11.3f}{2:>11.3f}{3:>11.4f}{4}{5} {6}\n".format
-                       (float(star_id[index]), float(xcenter[index]), float(ycenter[index]), float(sky_counts[index]),
-                        list_aper[index], list_mag[index], list_err[index]))
-
-            if index % star_count == star_count - 1:
-                fout.write("\n")
+    display_text('Aperture Photometry Is Completed')
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -620,80 +448,51 @@ def tabular_mag(input_file, output_file):
 # ------------------------------------------------------------------------------------------------------------------- #
 # remove_resfile = eg.boolbox(msg='Remove Residual Files From Previous Run Of This Script?',
 #                             title='Remove Residual Files', choices=['Yes', 'No'])
-# ctext = eg.enterbox(msg='Enter The Common Text Of Raw Photometric Files:', title='Raw Files', default='*.fits')
-# ctext_temp = eg.enterbox(msg='Enter The Common Text Of Template Subtracted Files:', title='Template Subtracted Files',
-#                          default='ts_*.fits')
-# coord_stars = eg.enterbox(msg='Enter The File With Coordinates Of Field Stars:', title='Field Star Coordinates',
-#                           default='stars.coo')
-# coord_sn = eg.enterbox(msg='Enter The File With Coordinates Of Supernova:', title='Supernova Coordinates',
-#                        default='sn.coo')
-# aperture_values = eg.enterbox(msg='Enter The Apertures At Which Photometry Is To Be Performed:',
-#                               title='Apertures For Performing Photometry', default='1')
+# ctext = eg.enterbox(msg='Enter The Common Text Of Files On Which Photometry Is To Be Done?',
+#                     title='Photometry Using IRAF', default='*.fits')
+# coord_file = eg.enterbox(msg='Enter The File With Coordinates Of Field Stars:', title='Field Star Coordinates',
+#                          default='stars.coo')
 
 remove_resfile = True
-ctext = '*.fits'
-ctext_temp = 'ts_*.fits'
-coord_stars = 'stars.coo'
-coord_sn = 'sn.coo'
-aperture_values = '1,4'
+ctext = 'HD*.fits'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Remove Residual Files From Previous Run Of Photometry Tasks (PHOT)
+# Remove Residual Files From Previous Run Of Photometry Tasks (PHOT, PSTSELECT, PSF, ALLSTAR)
 # ------------------------------------------------------------------------------------------------------------------- #
 if remove_resfile:
-    for text in ['tmp*', 's_*', 'conv_*', 'sc*', 'list_*', 'log*', 'ts_*.mag.*']:
+    for text in ['tmp*', '*.mag.*', 'list_*', 'log_*']:
         remove_similar_files(common_text=text)
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Determines The FWHM Of The Image Using Stars Mentioned In The File "stars.coo"
+# Groups FITS Files On Which Photometry Is To Be Performed
 # ------------------------------------------------------------------------------------------------------------------- #
-textlist_raw = 'list_files'
-textlist_fwhm = 'list_fwhm'
+text_list = 'list_files'
+text_list_fwhm = 'list_fwhm'
 
-group_similar_files(textlist_raw, common_text=ctext, exceptions='ts_,template,psf,sub')
-list_fwhm = calculate_fwhm(textlist_files=textlist_raw, coord_file=coord_stars)
-python_list_to_text_list(python_list=list_fwhm, text_list=textlist_fwhm)
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Groups FITS Files On Which Photometry Is To Be Performed & Performs Photometry On SN
-# ------------------------------------------------------------------------------------------------------------------- #
-textlist_temp = 'list_temp'
-group_similar_files(textlist_temp, common_text=ctext_temp)
-aper_phot(textlist_temp, textlist_fwhm, coord_sn, phot_radius=aperture_values, data_max='INDEF')
+list_files = group_similar_files(text_list, common_text=ctext)
+list_names = set([filename.split('_')[0] for filename in list_files])
+dict_coord = {name: name + '.coo' for name in list_names}
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Groups Mag Files From PHOT Task Into A Separate List & Makes A List Of Dates On Which Observation Was Done
-# ------------------------------------------------------------------------------------------------------------------- #
-mag_suffix = 1
-
-list_mdates = []
-for file_name in list_mag:
-    temp_name = file_name.split(OBJECT_NAME)[0]
-    date = dparser.parse(temp_name, fuzzy=True)
-    date = date.strftime('%Y-%m-%d')
-    list_mdates.append(date)
-list_dates = set(list_mdates)
-
-list_mag = group_similar_files('', common_text='ts_*.mag.1')
-# list_dates = set([file_name[6:16] for file_name in list_mag])
+# Determines The FWHM Of The Stars In The Field (stars.coo)
+# Performs Photometry On Images
 # ------------------------------------------------------------------------------------------------------------------- #
 
+for name in list_names:
+    group_similar_files(text_list + name, common_text=name + '*.fits')
+    list_objfwhm = calculate_fwhm(text_list_files=text_list + name, coord_file=dict_coord[name])
+    python_list_to_text_list(python_list=list_objfwhm, text_list=text_list_fwhm + name)
+    aper_phot(text_list + name, text_list_fwhm + name, dict_coord[name], data_max='INDEF')
+# ------------------------------------------------------------------------------------------------------------------- #
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Groups MAG Files From A Date Into A File 'list_date_mag1', Applies TXDUMP Task To Obtain 'output_date_mag1'
-# Also Computes Tabular Magnitude Files From IRAF MAG Files Generated Through Photometry
+# Remove Residual Files From Previous Run Of Photometry Tasks (PHOT, PSTSELECT, PSF, ALLSTAR)
 # ------------------------------------------------------------------------------------------------------------------- #
-for date in list_dates:
-    txdump(common_text='ts_*' + date + '*.mag.1', output_file='output_' + date + '_mag1')
-    tabular_mag(input_file='output_' + date + '_mag1', output_file='OUTPUT_tabulartemp_' + date)
-
-display_text("Tabular Magnitudes Have Been Computed For MAG Files")
+remove_similar_files(common_text='list_')
 # ------------------------------------------------------------------------------------------------------------------- #

@@ -18,6 +18,7 @@ import pandas as pd
 import easygui as eg
 from pyraf import iraf
 from astropy.io import fits
+import dateutil.parser as dparser
 from astropy.coordinates import Angle
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -60,16 +61,15 @@ DATE_keyword = 'DATE-OBS'
 FILTER_keyword = 'FILTER'
 AIRMASS_keyword = 'AIRMASS'
 EXPTIME_keyword = 'EXPTIME'
-TIMESTART_keyword = 'TM_START'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Object Details
 # ------------------------------------------------------------------------------------------------------------------- #
-OBJECT_NAME = 'ASASSN-14dq'
-OBJECT_RA = '21:57:59.9'
-OBJECT_DEC = '+24:16:08.1'
+OBJECT_NAME = '2017iro'
+OBJECT_RA = '14:06:23.11'
+OBJECT_DEC = '+50:43:20.2'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -513,6 +513,7 @@ def txdump(common_text, output_file):
 
     file_temp = 'temp_dump'
     group_similar_files(file_temp, common_text=common_text)
+    remove_file(output_file)
     task(textfile='@' + file_temp, fields=fields, expr='yes', Stdout=output_file)
     remove_file(file_temp)
 
@@ -641,7 +642,6 @@ def calculate_airmass(textlist_files):
         hdulist = fits.open(file_name, mode='update')
         file_header = hdulist[0].header
         date_obs = file_header[DATE_keyword]
-        time_start = file_header[TIMESTART_keyword]
 
         if RA_keyword in file_header.keys():
             object_ra = file_header[RA_keyword]
@@ -653,8 +653,7 @@ def calculate_airmass(textlist_files):
         else:
             object_dec = OBJECT_DEC
 
-        time_utc = str(datetime.timedelta(seconds=int(time_start)))
-        datetime_utc = date_obs + ' ' + time_utc
+        datetime_utc = date_obs + '00:00:00'
         jd = ephem.julian_date(datetime_utc)
 
         telescope = ephem.Observer()
@@ -675,11 +674,11 @@ def calculate_airmass(textlist_files):
         object_alt = Angle(str(obj_pos.alt) + ' degrees').degree
         airmass = 1 / math.cos(math.radians(90 - object_alt))
 
-        list_keywords = ['OBSERVAT', 'OBS_LAT', 'OBS_LONG', 'OBS_ALT', 'TIMEZONE', 'DATE_OBS', 'UT', 'JD', 'ST', 'RA',
+        list_keywords = ['OBSERVAT', 'OBS_LAT', 'OBS_LONG', 'OBS_ALT', 'TIMEZONE', 'DATE_OBS', 'JD', 'ST', 'RA',
                          'DEC', 'ALT', 'AZ', 'AIRMASS']
 
         dict_header = {'OBSERVAT': OBS_NAME, 'OBS_LAT': OBS_LAT, 'OBS_LONG': OBS_LONG, 'OBS_ALT': OBS_ALT,
-                       'TIMEZONE': OBS_TIMEZONE, 'DATE_OBS': date_obs, 'UT': time_utc, 'JD': jd, 'ST': time_sidereal,
+                       'TIMEZONE': OBS_TIMEZONE, 'DATE_OBS': date_obs, 'JD': jd, 'ST': time_sidereal,
                        'RA': object_ra, 'DEC': object_dec, 'ALT': obj_pos.alt, 'AZ': obj_pos.az, 'AIRMASS': airmass}
 
         for keyword in list_keywords:
@@ -849,7 +848,7 @@ def tabular_mag(input_file, output_file):
 # aperture_values2 = eg.enterbox(msg='Enter The 2nd Set Of Apertures At Which Photometry Is To Be Done:',
 #                                title='2nd Set Of Apertures', default='1')
 remove_resfile = True
-ctext = 'ca_*' + OBJECT_NAME + '*.fits'
+ctext = 'new_*' + OBJECT_NAME + '*.fits'
 phot_index = 1
 coord_file = 'stars.coo'
 coord_file2 = 'stars_sn.coo'
@@ -914,8 +913,16 @@ if phot_index == 1:
 # Groups Mag Files From PHOT Task Into A Separate List And Makes A List Of Epochs Of Observation
 # ------------------------------------------------------------------------------------------------------------------- #
 mag_suffix = 4
-list_mag = group_similar_files('', '*.mag.' + str(mag_suffix))
-list_dates = set([file_name[3:13] for file_name in list_mag])
+list_mag = group_similar_files('', common_text='*.mag.' + str(mag_suffix))
+
+list_mdates = []
+for file_name in list_mag:
+    temp_name = file_name.split(OBJECT_NAME)[0]
+    date = dparser.parse(temp_name, fuzzy=True)
+    date = date.strftime('%Y-%m-%d')
+    list_mdates.append(date)
+list_dates = list(set(list_mdates))
+list_dates.sort()
 # ------------------------------------------------------------------------------------------------------------------- #
 
 

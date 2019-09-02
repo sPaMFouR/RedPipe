@@ -27,8 +27,8 @@ phase = 200
 steepness = 0.121
 deltat = 90
 deltatErr = 5
-vph = 3913
-vphErr = 320
+vph = 4272
+vphErr = 53
 mv50 = -16.74
 mv50Err = 0.22
 

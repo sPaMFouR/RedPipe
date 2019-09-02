@@ -193,8 +193,9 @@ list_patterns = ['ca_' + date + '_cfbs_' + OBJECT_name + '-' + band.lower() for 
 list_list_comb = []
 for pattern in list_patterns:
     if len(group_similar_files('', pattern + '*')) != 0:
-        group_similar_files('list_' + pattern, common_text=pattern + '*')
-        list_list_comb.append('list_' + pattern)
+        pattern_files = group_similar_files('list_' + pattern, common_text=pattern + '*')
+        if len(pattern_files) > 1:
+            list_list_comb.append('list_' + pattern)
 print list_list_comb
 # ------------------------------------------------------------------------------------------------------------------- #
 
