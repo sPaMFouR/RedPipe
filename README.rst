@@ -1,8 +1,6 @@
-Reduction Pipeline (RedPipe)
-============================
+RedPipe (Reduction Pipeline) Version 0.1.0a1:
+============================================
 
-A collection of scripts to aid Optical Data Reduction.
+RedPipe is a collection of python scripts to aid with Optical Data Reduction. There are scripts on preprocessing, photometry, spectroscopy, analysis and plotting. The photometry and spectroscopy codes uses pyraf.
 
-----
-
-Version 1.0.0a1:
+Please not that this is still under development.
