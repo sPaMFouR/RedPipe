@@ -1,4 +1,4 @@
-# RedPipe: Reduction Pipeline [v0.1.0a1] #
+# RedPipe: Reduction Pipeline #
 
 [![Build Status](https://img.shields.io/badge/release-0.1.0a1-orange)](https://github.com/sPaMFouR/RedPipe)
 [![Python 2.7](https://img.shields.io/badge/python-2.7-blue.svg)](https://www.python.org/downloads/release/python-271/)
