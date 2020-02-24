@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
-# xxxxxxxxxxxxxxxxxxxx-------------------------COSMIC RAY CORRECTION--------------------------xxxxxxxxxxxxxxxxxxxxxxx #
+# xxxxxxxxxxxxxxxxxxxxxxxxxxx-------------------------RENAME RAW FILES-----------------------xxxxxxxxxxxxxxxxxxxxxxxx #
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -8,29 +8,33 @@
 # ------------------------------------------------------------------------------------------------------------------- #
 import os
 import re
+import sys
 import glob
-import cosmics as cs
-import easygui as eg
+import numpy as np
 from pyraf import iraf
+from astropy.io import fits
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Telescope CCD Specifications
 # ------------------------------------------------------------------------------------------------------------------- #
-read_noise = 4.87
-ccd_gain = 1.22
-data_max = 55000
+read_noise = 5.75
+ccd_gain = 0.28
+data_max = 700000
+fields_extr = '$I, OBJECT, EXPTIME, FILTER, GRISM, COMMENT'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Image Header Keywords
+# Load IRAF Packages
 # ------------------------------------------------------------------------------------------------------------------- #
-grism_keyword = 'GRISM'
-filter_keyword = 'IFILTER'
-object_keyword = 'OBJECT'
-exptime_keyword = 'EXPTIME'
+iraf.noao(_doprint=0)
+iraf.imred(_doprint=0)
+iraf.ccdred(_doprint=0)
+iraf.images(_doprint=0)
+iraf.crutil(_doprint=0)
+iraf.ccdred.instrument = 'ccddb$kpno/camera.dat'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -60,13 +64,13 @@ def remove_similar_files(common_text):
     Returns:
         None
     """
-    for residual_file in glob.glob(common_text):
-        remove_file(residual_file)
+    for residual_files in glob.glob(common_text):
+        os.remove(residual_files)
 
 
 def group_similar_files(text_list, common_text, exceptions=''):
     """
-    Groups similar files based on the string 'common_text'. Writes the similar files
+    Groups similar files based on the string "common_text". Writes the similar files
     onto the list 'text_list' (only if this string is not empty) and appends the similar
     files to a list 'python_list'.
     Args:
@@ -105,14 +109,14 @@ def text_list_to_python_list(text_list):
     Returns:
         python_list : List of all the elements in the file 'text_list'
     Raises:
-        Error : File 'text_list 'Not Found
+        Error       : File 'text_list 'Not Found
     """
     if os.path.isfile(text_list):
         with open(text_list, 'r+') as f:
             python_list = f.read().split()
             return python_list
     else:
-        print ("Error : File '{0}' Not Found".format(text_list))
+        print ("Error : File {0} Not Found".format(text_list))
 
 
 def python_list_to_text_list(python_list, text_list):
@@ -126,39 +130,41 @@ def python_list_to_text_list(python_list, text_list):
     """
     with open(text_list, 'w') as f:
         for element in python_list:
-            f.write(str(element) + "\n")
+            f.write(str(element) + '\n')
 
 
 def list_lists_to_list(list_lists, text_list):
     """
     Groups filenames from a list 'list_lists' onto a single file 'text_list'.
     Args:
-        list_lists  : List containing the names of different lists
-        text_list   : Name of the file onto which all the filenames from the 'list_lists' have to be appended
+        list_lists      : List containing the names of different lists
+        text_list       : Name of the file onto which all the filenames from the 'list_lists' have to be appended
     Returns:
-        list_name   : Python list containing the names of all the constituent files
+        list_filename   : Python list containing the names of all the constituent files
     """
-    list_name = []
+    list_filename = []
     for file_name in list_lists:
         with open(file_name, 'r') as f:
-            file_list = f.read().split()
-            for element in file_list:
-                list_name.append(element)
-    python_list_to_text_list(list_name, text_list)
+            list_contents = f.read().split()
+            for element in list_contents:
+                list_filename.append(element)
+    python_list_to_text_list(list_filename, text_list)
 
-    return list_name
-
-# ------------------------------------------------------------------------------------------------------------------- #
+    return list_filename
 
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# Load IRAF Packages
-# ------------------------------------------------------------------------------------------------------------------- #
-iraf.noao(_doprint=0)
-iraf.imred(_doprint=0)
-iraf.crutil(_doprint=0)
-iraf.images(_doprint=0)
-iraf.ccdred.instrument = "ccddb$kpno/camera.dat"
+def display_text(text_to_display):
+    """
+    Displays text mentioned in the string 'text_to_display'
+    Args:
+        text_to_display : Text to be displayed
+    Returns:
+        None
+    """
+    print ("\n" + "# " + "-" * (12 + len(text_to_display)) + " #")
+    print ("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
+    print ("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -168,7 +174,7 @@ iraf.ccdred.instrument = "ccddb$kpno/camera.dat"
 
 def hedit(textlist_files, field_name, value, add_keyword='no'):
     """
-    Edits the header key specified by the 'field_name' of all the FITS files in the file 'text_list_files'
+    Edits the header key specified by the 'field_name' of all the FITS files in the file 'textlist_files'
     and substitutes it with 'value'.
     Args:
         textlist_files  : Text list containing the names of files whose header is to be edited
@@ -181,104 +187,46 @@ def hedit(textlist_files, field_name, value, add_keyword='no'):
     task = iraf.images.imutil.hedit
     task.unlearn()
 
-    task.verify = 'no'                                      # Verify Each Edit Operation?
-    task.add = add_keyword	                            # Add Rather Than Edit Fields?
-    task.show = 'no'                                        # Print Record Of Each Edit Operation?
-    task.update = 'yes'                                     # Enable Updating Of The Image Header?
+    task.verify = 'no'              # Verify Each Edit Operation?
+    task.add = add_keyword          # Add Rather Than Edit Fields?
+    task.show = 'no'                # Print Record Of Each Edit Operation?
+    task.update = 'yes'             # Enable Updating Of The Image Header?
 
     task(images='@' + textlist_files, fields=field_name, value=value)
 
 
-def cosmicrays(ctext, prefix_str='c'):
+def hselect(ctext, fields=fields_extr):
     """
-    Corrects for cosmic rays in the OBJECT image.
+    Selects the header key specified by the 'fields' of all the FITS files having the common_text 'ctext'.
     Args:
-        ctext           : Common text of all the files to be corrected for cosmic rays
-        prefix_str      : Prefix to distinguish the aligned FITS file from the original FITS file
+        ctext       : Common text of the names of files whose header is to be extracted
+        field_name  : The header keyword to be edited for the above files
     Returns:
         None
     """
-    list_crreject = group_similar_files("", common_text=ctext)
-
-    task = iraf.noao.imred.crutil.cosmicrays
+    task = iraf.images.imutil.hselect
     task.unlearn()
 
-    for image in list_crreject:
-        output_filename = prefix_str + image
-        remove_file(output_filename)
-        task(input=image, output=output_filename)
+    task.expr = 'yes'               # Boolean Expression Governing Selection
+    task.missing = 'INDEF'          # Value For Missing Keywords
+
+    task(images=ctext, fields=fields)
 
 
-def crmedian(textlist_cosmic, prefix_str='c'):
+def rename(textlist_files, value='fits', field_name='extn'):
     """
-    Corrects for cosmic rays in the OBJECT image after clipping based on the string 'clip_section'
+    Add '.fits' extension to the Raw FITS files in the list 'textlist_files'.
     Args:
-        textlist_cosmic     : Text list containing the names of FITS files to be corrected for cosmic rays
-        prefix_str          : Prefix to distinguish the aligned FITS file from the original FITS file
+        textlist_files  : Text list containing the names of files whose header is to be edited
+        value           : New File name or Field name
+        field_name      : Field to be modified (all|dir|root|extn)
     Returns:
         None
     """
-    list_cosmic = text_list_to_python_list(textlist_cosmic)
-
-    task = iraf.noao.imred.crutil.crmedian
+    task = iraf.system.rename
     task.unlearn()
 
-    task.lsigma = 25                                            # Low Clipping Sigma Factor
-    task.ncsig = 10                                             # Column Box Size For Sigma Calculation
-
-    for file_name in list_cosmic:
-        output_filename = prefix_str + file_name
-        remove_file(output_filename)
-        task(input=file_name, output=output_filename)
-
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Functions For Cosmic Ray Removal
-# ------------------------------------------------------------------------------------------------------------------- #
-
-def cosmicray_removal(textlist_cosmic, prefix_str='c'):
-    """
-    Corrects for cosmic rays in the OBJECT image after clipping based on the string 'clip_section'
-    Args:
-        textlist_cosmic : Text list containing names of FITS file to be corrected for Cosmic rays
-        prefix_str      : Prefix to distinguish the aligned FITS file from the original FITS file
-    Returns:
-        None
-    """
-    list_cosmic = text_list_to_python_list(textlist_cosmic)
-
-    for file_name in list_cosmic:
-        input_array, input_header = cs.fromfits(file_name)
-        input_object = cs.cosmicsimage(input_array, gain=float(ccd_gain), readnoise=float(read_noise),
-                                       sigclip=15.0, sigfrac=0.5, objlim=5.0, satlevel=int(data_max), verbose=False)
-        input_object.run(maxiter=2, verbose=False)
-
-        output_filename = prefix_str + file_name
-        remove_file(output_filename)
-        cs.tofits(outfilename=output_filename, pixelarray=input_object.cleanarray, hdr=input_header)
-
-
-def cosmicray_check(textlist_cosmic, prefix_str='cr_'):
-    """
-    Subtracts the cosmic ray corrected image from the original image. Both the images are clipped.
-    This is performed only after cosmic ray correction has been performed on images.
-    Args:
-        textlist_cosmic	: Text list containing the names of FITS files to be corrected for cosmic rays
-        prefix_str      : Prefix to distinguish the aligned FITS file from the original FITS file
-    Returns:
-        None
-    """
-    list_cosmic = text_list_to_python_list(textlist_cosmic)
-
-    task = iraf.images.imutil.imarith
-    task.unlearn()
-
-    for file_name in list_cosmic:
-        output_filename = prefix_str + file_name[3:]
-        remove_file(output_filename)
-        task(operand1=file_name, op='-', operand2='c' + file_name, result=output_filename)
+    task(images='@' + textlist_files, newname=value, field=field_name)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -286,28 +234,32 @@ def cosmicray_check(textlist_cosmic, prefix_str='cr_'):
 # ------------------------------------------------------------------------------------------------------------------- #
 # Manual Setup - GUI Code
 # ------------------------------------------------------------------------------------------------------------------- #
-# rmv_files = eg.boolbox('Remove Residual Files From Previous Run?', title='Remove Residual Files', choices=['Yes', 'No'])
-# ctext = eg.enterbox(msg='Enter The Common Text Of Files On Which Cosmic Ray Correction Has To Be Done?',
-#                    title='Cosmic Ray Correction', default='a_*.fits')
-rmv_files = True
-ctext = 'a_*.fits'
+# remove_resfile = eg.boolbox(msg='Remove Residual Files From Previous Run Of This Script?',
+#                             title='Remove Residual Files', choices=['Yes', 'No'])
+remove_resfile = True
 # ------------------------------------------------------------------------------------------------------------------- #
 
-
 # ------------------------------------------------------------------------------------------------------------------- #
-# Remove Resdiual Files From Previous Run Of This Script
+# Remove Residual Files From Previous Run Of Rename.py
 # ------------------------------------------------------------------------------------------------------------------- #
-if rmv_files:
-    for text in ['cr_*.fits']:
+if remove_resfile:
+    for text in ['list_*', '*.cl']:
         remove_similar_files(common_text=text)
 # ------------------------------------------------------------------------------------------------------------------- #
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# Groups Similar Type Of FITS Files
+# Edits The 'OBJECT' Keyword In The Headers Of FITS Files
+# ------------------------------------------------------------------------------------------------------------------- #
+textlist_files = 'list_files'
+group_similar_files(textlist_files, common_text='*', exceptions='.fits')
+
+rename(textlist_files)
+hselect(ctext='*.fits[0]', fields=fields_extr)
+# ------------------------------------------------------------------------------------------------------------------- #
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Applies Cosmic Ray Correction To OBJECT Images & Checks The Corrected Images For Cosmic Rays Through 'cr_*.fits'
+# Removes All The Text LISTS Created In The Current Directory
 # ------------------------------------------------------------------------------------------------------------------- #
-list_crreject = 'list_crreject'
-group_similar_files(list_crreject, ctext)
-crmedian(list_crreject)
-cosmicray_check(list_crreject)
+remove_similar_files('*list*')
 # ------------------------------------------------------------------------------------------------------------------- #

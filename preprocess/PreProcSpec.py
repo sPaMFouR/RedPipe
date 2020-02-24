@@ -216,7 +216,7 @@ def hedit(textlist_files, field_name, value, add_keyword='no'):
     Returns:
         None
     """
-    task = iraf.images.hedit
+    task = iraf.images.imutil.hedit
     task.unlearn()
 
     task.verify = 'no'  # Verify Each Edit Operation?
