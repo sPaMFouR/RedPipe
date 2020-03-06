@@ -30,10 +30,8 @@ fields_extr = '$I, OBJECT, EXPTIME, FILTER, GRISM, COMMENT'
 # Load IRAF Packages
 # ------------------------------------------------------------------------------------------------------------------- #
 iraf.noao(_doprint=0)
-iraf.imred(_doprint=0)
-iraf.ccdred(_doprint=0)
 iraf.images(_doprint=0)
-iraf.crutil(_doprint=0)
+iraf.imred(_doprint=0)
 iraf.ccdred.instrument = 'ccddb$kpno/camera.dat'
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -207,10 +205,9 @@ def hselect(ctext, fields=fields_extr):
     task = iraf.images.imutil.hselect
     task.unlearn()
 
-    task.expr = 'yes'               # Boolean Expression Governing Selection
     task.missing = 'INDEF'          # Value For Missing Keywords
 
-    task(images=ctext, fields=fields)
+    task(images=ctext, fields=fields, expr='yes', Stdout='list_summary.cl')
 
 
 def rename(textlist_files, value='fits', field_name='extn'):
@@ -226,7 +223,7 @@ def rename(textlist_files, value='fits', field_name='extn'):
     task = iraf.system.rename
     task.unlearn()
 
-    task(images='@' + textlist_files, newname=value, field=field_name)
+    task(files='@' + textlist_files, newname=value, field=field_name)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -252,7 +249,7 @@ if remove_resfile:
 # Edits The 'OBJECT' Keyword In The Headers Of FITS Files
 # ------------------------------------------------------------------------------------------------------------------- #
 textlist_files = 'list_files'
-group_similar_files(textlist_files, common_text='*', exceptions='.fits')
+group_similar_files(textlist_files, common_text='*', exceptions='.fits, *.py')
 
 rename(textlist_files)
 hselect(ctext='*.fits[0]', fields=fields_extr)

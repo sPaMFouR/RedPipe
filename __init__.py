@@ -8,6 +8,6 @@ This is RedPipe, a python package to perform Photometry & Spectroscopy on Optica
 
 __author__ = "Avinash Singh"
 __copyright__ = "2018, Avinash Singh"
-__version__ = "1.0.0a1"
+__version__ = "0.1.0"
 
 import Photometry, PhotStandard, PhotTemp, PhotUVIT, PreProcPhot, PreProcSpec, PostProcSpec, Align, ObsPlan, Spectroscopy, Airmass, FluxCalib, TemplateSubtraction, FitPejcha, FitNagyLC2, FitTaddiaR, FitVinko, FitEmpirical, FitElmhamdi
