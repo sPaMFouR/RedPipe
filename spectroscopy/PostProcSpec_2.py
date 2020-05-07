@@ -448,7 +448,7 @@ def standard(file_name, prefix_str='std'):
     task.magband = 'V'                                      # Magnitude Band
 
     output_filename = prefix_str + file_name.lstrip('wcbs').rstrip('.ms.fits')
-    print file_name, output_filename
+    print (file_name, output_filename)
     remove_file(output_filename)
     task(input=file_name, star_name=object_name.lower(), output=output_filename)
 
@@ -584,7 +584,7 @@ def scombine(ctext):
     """
     textlist_comb = 'list_cfwcbs'
     list_comb = group_similar_files(textlist_comb, common_text=ctext)
-    print combclip_gr8, combclip_gr7
+    print (combclip_gr8, combclip_gr7)
     sampling_region = str(combclip_gr8 + 35) + ':' + str(combclip_gr7 - 35)
 
     task = iraf.onedspec.scombine
@@ -622,7 +622,6 @@ def calculate_airmass(ctext):
         file_header = hdulist[0].header
 
         object_str = file_header[OBJECT_keyword]
-        date_obs = file_header[DATE_keyword]
         date_avg = file_header[str(DATEAVG_keyword)]
 
         object_ra = OBJECT_RA
@@ -769,8 +768,8 @@ if len(list_cbs_gr8_ms) != 0:
 # Calculates AIRMASS And Clips Wavelength Calibrated 1-D Spectra Of Objects & Standards
 # ------------------------------------------------------------------------------------------------------------------- #
 dispcor(ctext='cbs_*gr*.ms.fits')
-specshift(ctext='wcbs_*gr7*.fits', offset=5.8)
-specshift(ctext='wcbs_*gr8*.fits', offset=4.0)
+# specshift(ctext='wcbs_*gr7*.fits', offset=6.2)
+specshift(ctext='wcbs_*gr8*.fits', offset=5.2)
 calculate_airmass(ctext='wcbs_*.fits')
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -808,7 +807,7 @@ else:
 
 for file_name in group_similar_files('', common_text='cfwcbs*.fits'):
     header = fits.getheader(file_name, ext=0)
-    date_obs = header[DATE_keyword]
+    date_obs = header[DATEAVG_keyword].split('T')[0]
     shutil.copy(file_name, date_obs + '_' + file_name)
     if 'gr' not in file_name:
         shutil.copy(file_name, '../FinalSpectra/' + date_obs + '_' + file_name)
