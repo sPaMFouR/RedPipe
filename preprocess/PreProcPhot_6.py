@@ -165,6 +165,7 @@ def list_lists_to_list(list_lists, text_list):
 
 def check_fileempty(file_name):
     """
+    Check whether a file is empty.
     Args:
         file_name   : Name of the file to be checked whether it's empty
     Returns:
