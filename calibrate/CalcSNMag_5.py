@@ -442,10 +442,10 @@ def calculate_tempmag(file_mag, zpmag_df, zperr_df):
 
         apcor_mean[band] = np.mean(apcor_vals)
         apcor_stdev[band] = np.std(apcor_vals)
-        apcor_meanerr[band] = np.sum([val ** 2 for val in apcor_errs]) ** 0.5
+        apcor_meanerr[band] = (np.sum([val ** 2 for val in apcor_errs]) / len(apcor_errs)) ** 0.5
 
     temp_df['APCOR_MEAN'] = temp_df['FILTER'].apply(lambda x: apcor_mean[x])
-    temp_df['APCOR_MEANERR'] = temp_df['FILTER'].apply(lambda x: apcor_stdev[x])
+    temp_df['APCOR_MEANERR'] = temp_df['FILTER'].apply(lambda x: apcor_meanerr[x])
     temp_df['APCOR_STD'] = temp_df['FILTER'].apply(lambda x: apcor_stdev[x])
 
     temp_df['ZP_MAG'] = temp_df['FILTER'].apply(lambda x: zpmag_df.loc[date, x])
