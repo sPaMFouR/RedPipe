@@ -126,7 +126,7 @@ def text_list_to_python_list(text_list):
     else:
         print("ERROR : File '{0}' Not Found".format(text_list))
         sys.exit(1)
-        
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -164,10 +164,10 @@ def deredden(file_name, ebv, prefix_str='d'):
     task(input=file_name, output=output_filename, value=ebv)
 
     return output_filename
-            
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Functions For Fitting BlackBody Curve
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -206,29 +206,27 @@ def read_1dspec(file_name):
     return wave_array, flux_array
 
 
-def fit_specarr((wave_data, flux_data), smooth=True, sp=3, write=False):
+def fit_specarr(spec_data, smooth=True, sp=3, write=False):
     """
     Fits a blackbody (planckian) to a wave_arr, flux_arr containing 1-D spectrum data.
     Args:
-        wave_data   : Wavelength array of the 1-D spectrum to be fit
-        flux_data   : Flux array of the 1-D spectrum to be fit
+        spec_data   : Tuple containing wavelength and flux array of the 1-D spectrum to be fit
         smooth      : Whether or not to smooth the spectra
         sp          : Smoothing parameter to be used if smooth=True
-        write       : Whether to write the best fit data to a file 
+        write       : Whether to write the best fit data to a file
     Returns:
         data_df     : Pandas DataFrame containing 1-D spectra
         popt        : Optimal fit parameters
         pcov        : Covariance of the fit parameters
     """
-    comb_data = zip(wave_data, flux_data)                                            
-    wave_data = [wave for wave, _ in sorted(comb_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]         
-    flux_data = [flux for wave, flux in sorted(comb_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]             
+    spec_data = zip(spec_data)
+    wave_data = [wave for wave, _ in sorted(spec_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]
+    flux_data = [flux for wave, flux in sorted(spec_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]
 
     if smooth:
         flux_data = convolve(flux_data, Gaussian1DKernel(int(sp)))
 
     popt, pcov = curve_fit(calc_flux, wave_data, flux_data, p0=[guess_amp, guess_temp])
-
     print ("\nBest-Fit Parameters:")
     print ("Temp = {0:.2f}+/- {1:.2f}".format(popt[1], pcov[1, 1]))
 
@@ -236,6 +234,7 @@ def fit_specarr((wave_data, flux_data), smooth=True, sp=3, write=False):
     data_df['Flux'] = flux_data
     data_df['Wavelength'] = wave_data
     data_df['BBFitFlux'] = calc_flux(data_df['Wavelength'], *popt)
+
     if write:
         data_df.to_csv('BBFit_SpecArr.dat', sep=' ', index=False, header=True, na_rep='INDEF')
 
@@ -247,24 +246,23 @@ def fit_specfits(file_name, smooth=True, sp=3, write=False):
     Fits a blackbody (planckian) to a FITS file containing 1-D spectra.
     Args:
         file_name   : Name of the 1-D spectrum FITS file to be fit
-        smooth      : Whether or not to smooth the spectra
+        smooth      : Whether or not to smoothen the spectra
         sp          : Smoothing parameter to be used if smooth=True
-        write       : Whether to write the best fit data to a file 
+        write       : Whether to write the best fit data to a file
     Returns:
         data_df     : Pandas DataFrame containing 1-D spectra
         popt        : Optimal fit parameters
         pcov        : Covariance of the fit parameters
     """
-    wave_data, flux_data = read_1dspec(file_name)    
-    comb_data = zip(wave_data, flux_data)                                            
-    wave_data = [wave for wave, _ in sorted(comb_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]         
-    flux_data = [flux for wave, flux in sorted(comb_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]             
+    wave_data, flux_data = read_1dspec(file_name)
+    spec_data = zip(wave_data, flux_data)
+    wave_data = [wave for wave, _ in sorted(spec_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]
+    flux_data = [flux for wave, flux in sorted(spec_data, key=lambda x: x[0]) if upper_lim >= wave >= lower_lim]
 
     if smooth:
         flux_data = convolve(flux_data, Gaussian1DKernel(int(sp)))
 
     popt, pcov = curve_fit(calc_flux, wave_data, flux_data, p0=[guess_amp, guess_temp])
-
     print ("\nBest-Fit Parameters:")
     print ("Temp = {0:.2f}+/- {1:.2f}".format(popt[1], pcov[1, 1]))
     print ("Amp = {0:.2f}+/- {1:.2f}".format(popt[0], pcov[0, 0]))
@@ -273,9 +271,9 @@ def fit_specfits(file_name, smooth=True, sp=3, write=False):
     data_df['Flux'] = flux_data
     data_df['Wavelength'] = wave_data
     data_df['BBFitFlux'] = calc_flux(data_df['Wavelength'], *popt)
-    
+
     if write:
-        data_df.to_csv('BBFit_' + file_name.split('.')[0] + '.dat', sep=' ', index=False, 
+        data_df.to_csv('BBFit_' + file_name.split('.')[0] + '.dat', sep=' ', index=False,
                        header=True, na_rep='INDEF')
 
     return data_df, popt, pcov
@@ -288,7 +286,7 @@ def fit_specdat(file_name, smooth=True, sp=3, write=False):
         file_name   : Name of the 1-D spectrum .dat file to be fit
         smooth      : Whether or not to smooth the spectra
         sp          : Smoothing parameter to be used if smooth=True
-        write       : Whether to write the best fit data to a file 
+        write       : Whether to write the best fit data to a file
     Returns:
         data_df     : Pandas DataFrame containing 1-D spectra
         popt        : Optimal fit parameters
@@ -299,17 +297,16 @@ def fit_specdat(file_name, smooth=True, sp=3, write=False):
 
     if smooth:
         data_df['Flux'] = convolve(data_df['Flux'].tolist(), Gaussian1DKernel(int(sp)))
-        
+
     popt, pcov = curve_fit(calc_flux, data_df['Wavelength'].tolist(), data_df['Flux'].tolist(),
                            p0=[guess_amp, guess_temp])
-
     print ("\nBest-Fit Parameters:")
     print ("Temp = {0:.2f}+/- {1:.2f}".format(popt[1], pcov[1, 1]))
 
     data_df['BBFitFlux'] = calc_flux(data_df['Wavelength'], *popt)
-    
+
     if write:
-        data_df.to_csv('BBFit_' + file_name.split('.')[0] + '.dat', sep=' ', index=False, 
+        data_df.to_csv('BBFit_' + file_name.split('.')[0] + '.dat', sep=' ', index=False,
                        header=True, na_rep='INDEF')
 
     return data_df, popt, pcov
@@ -364,31 +361,31 @@ def plot_fit(file_name, fits=False, smooth=True, sp=3):
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
-# # ------------------------------------------------------------------------------------------------------------------- #
-# # Reads Data To Be Fit
-# # ------------------------------------------------------------------------------------------------------------------- #
-# ctext = 'rfz_*.fits'
-# list_files = group_similar_files('', common_text=ctext)
-# # ------------------------------------------------------------------------------------------------------------------- #
+# ------------------------------------------------------------------------------------------------------------------- #
+# Reads Data To Be Fit
+# ------------------------------------------------------------------------------------------------------------------- #
+ctext = 'rfz_*.fits'
+list_files = group_similar_files('', common_text=ctext)
+# ------------------------------------------------------------------------------------------------------------------- #
 
 
-# # ------------------------------------------------------------------------------------------------------------------- #
-# # Fit The Blackbody Function To All Spectra And Plot The Data
-# # ------------------------------------------------------------------------------------------------------------------- #
-# data_temp = pd.DataFrame(columns=['JD', 'Temp', 'TempErr'])
+# ------------------------------------------------------------------------------------------------------------------- #
+# Fit The Blackbody Function To All Spectra And Plot The Data
+# ------------------------------------------------------------------------------------------------------------------- #
+data_temp = pd.DataFrame(columns=['JD', 'Temp', 'TempErr'])
 
-# for index, file_name in enumerate(list_files):
-#     best_temp, sigma_temp = fit_specfits(file_name, sp=10)
-#     data_temp.loc[index, 'JD'] = round(float(fits.getval(filename=file_name, keyword=JD_keyword)), 2)
-#     data_temp.loc[index, 'Temp'] = float("{0:.1f}".format(best_temp))
-#     data_temp.loc[index, 'TempErr'] = float("{0:.1f}".format(sigma_temp))
+for index, file_name in enumerate(list_files):
+    best_temp, sigma_temp = fit_specfits(file_name, sp=10)
+    data_temp.loc[index, 'JD'] = round(float(fits.getval(filename=file_name, keyword=JD_keyword)), 2)
+    data_temp.loc[index, 'Temp'] = float("{0:.1f}".format(best_temp))
+    data_temp.loc[index, 'TempErr'] = float("{0:.1f}".format(sigma_temp))
 
-# data_temp.to_csv('OUTPUT_BlackBodyFit', sep=' ', index=False, header=True)
+data_temp.to_csv('OUTPUT_BlackBodyFit', sep=' ', index=False, header=True)
 
-# for index, file_name in enumerate(list_files):
-#     plot_fit(file_name, fits=False)
+for index, file_name in enumerate(list_files):
+    plot_fit(file_name, fits=False)
 
-# # ------------------------------------------------------------------------------------------------------------------- #
+# ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -415,7 +412,6 @@ for ebv in ebv_array:
 #     deredden(ebv=)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -451,4 +447,3 @@ plt.show()
 plt.close(fig)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-

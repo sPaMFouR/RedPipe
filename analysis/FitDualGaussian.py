@@ -99,24 +99,24 @@ flux_data = image_data
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
-# # ------------------------------------------------------------------------------------------------------------------- #
-# # Setup The Plot For Fitting The Spectral Feature
-# # ------------------------------------------------------------------------------------------------------------------- #
-# fig = plt.figure(figsize=(12, 9))
-# ax = fig.add_subplot(111)
+# ------------------------------------------------------------------------------------------------------------------- #
+# Setup The Plot For Fitting The Spectral Feature
+# ------------------------------------------------------------------------------------------------------------------- #
+fig = plt.figure(figsize=(12, 9))
+ax = fig.add_subplot(111)
 
-# ax.plot(wav_data, flux_data, ls='-', lw=1.5, c='k)
-# ax.set_xlim(min(wav_data), max(wav_data))
-# ax.xaxis.set_major_locator(MultipleLocator(500))
-# ax.xaxis.set_minor_locator(MultipleLocator(50))
-# num_data = np.linspace(1, len(wav_data), len(ax.get_xticks()))
+ax.plot(wav_data, flux_data, ls='-', lw=1.5, c='k')
+ax.set_xlim(min(wav_data), max(wav_data))
+ax.xaxis.set_major_locator(MultipleLocator(500))
+ax.xaxis.set_minor_locator(MultipleLocator(50))
+num_data = np.linspace(1, len(wav_data), len(ax.get_xticks()))
 
-# ax2 = ax.twiny()
-# ax2.set_xticks(num_data)
+ax2 = ax.twiny()
+ax2.set_xticks(num_data)
 
-# plt.show()
-# plt.close(fig)
-# # ------------------------------------------------------------------------------------------------------------------- #
+plt.show()
+plt.close(fig)
+# ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -138,7 +138,7 @@ usable_vel = np.array([((wave - wave_feature) / (1000 * wave_feature)) * light_s
 
 opt, cov = curve_fit(two_gaussians, usable_wav, usable_flux, p0=[guess_fit])
 err = np.sqrt(np.diag(cov))
-print opt
+print (opt)
 
 optbroad = [abs(opt[index]) for index in [0, 1, 2, 6]]
 covbroad = [abs(err[index]) for index in [0, 1, 2, 6]]

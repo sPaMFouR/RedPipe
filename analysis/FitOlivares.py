@@ -139,9 +139,9 @@ for j in range(axes.shape[1]):
 
     opt, cov = curve_fit(olifunc, band_df['Phase'], band_df[band], sigma=band_df[band + 'Err'], p0=dict_guess[band])
 
-    print np.round(np.array(opt).astype('float64'), 4)
-    print np.round(np.sqrt(np.diagonal(cov).astype('float64')), 4)
-    print np.round(redchisq(band_df[band], olifunc(band_df['Phase'], *opt), sd=band_df[band + 'Err']), 2)
+    print (np.round(np.array(opt).astype('float64'), 4))
+    print (np.round(np.sqrt(np.diagonal(cov).astype('float64')), 4))
+    print (np.round(redchisq(band_df[band], olifunc(band_df['Phase'], *opt), sd=band_df[band + 'Err']), 2))
 
     jdarr = np.round(np.arange(band_df['Phase'].min(), band_df['Phase'].max(), 0.1), 1)
 

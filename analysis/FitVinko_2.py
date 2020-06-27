@@ -147,7 +147,7 @@ ax.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=14)
 ax.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=14)
 
 ax.set_ylabel('Bolometric Magnitude [mag]', fontsize=16)
-ax.set_xlabel('Time Since Explosion [Days]',fontsize=16)
+ax.set_xlabel('Time Since Explosion [Days]', fontsize=16)
 
 fig.savefig('PLOT_FitVinko.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()

@@ -107,11 +107,11 @@ for j, band in enumerate(list_bands):
     fitvar = myPWLF.prediction_variance(xarr)
     fitsigma = np.sqrt(fitvar)
 
-    print "{0}-Band".format(band)
-    print "Number of Parameters: {0}".format(myPWLF.n_parameters)
-    print "Best Fit: ", myPWLF.slopes * 100
-    print "Manual Fit: ", slope2
-    print redchisq(y, myPWLF.predict(x), n=myPWLF.n_parameters)
+    print ("{0}-Band".format(band))
+    print ("Number of Parameters: {0}".format(myPWLF.n_parameters))
+    print ("Best Fit: ", myPWLF.slopes * 100)
+    print ("Manual Fit: ", slope2)
+    print (redchisq(y, myPWLF.predict(x), n=myPWLF.n_parameters))
 
     axes[0, j].plot(x, y, marker='*', ms=10, ls='', c='k', label='Observed Data')
     axes[0, j].plot(xarr, yfit, ls='-', lw=1.5, c='blue', label='Optimised Fit')
@@ -167,101 +167,101 @@ plt.close(fig)
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
-# # ------------------------------------------------------------------------------------------------------------------- #
-# # Fit Olivares Model & Determine Light Curve Parameters For SN In Study (Technique - 2)
-# # ------------------------------------------------------------------------------------------------------------------- #
-# fig, axes = plt.subplots(nrows=2, ncols=4, gridspec_kw={'height_ratios': [4, 1]}, figsize=(30, 10), sharex=True)
+# ------------------------------------------------------------------------------------------------------------------- #
+# Fit Olivares Model & Determine Light Curve Parameters For SN In Study (Technique - 2)
+# ------------------------------------------------------------------------------------------------------------------- #
+fig, axes = plt.subplots(nrows=2, ncols=4, gridspec_kw={'height_ratios': [4, 1]}, figsize=(30, 10), sharex=True)
 
-# for band in list_bands:
-#     band_df = data_df[['JD', 'Phase', band, band + 'Err']].copy().dropna()
-# #     band_df = band_df[band_df['JD'] >= date_maximum]
+for band in list_bands:
+    band_df = data_df[['JD', 'Phase', band, band + 'Err']].copy().dropna()
+#     band_df = band_df[band_df['JD'] >= date_maximum]
 
-#     x = band_df['Phase'].values
-#     y = band_df[band].values
-#     yerr = band_df[band + 'Err'].values
+    x = band_df['Phase'].values
+    y = band_df[band].values
+    yerr = band_df[band + 'Err'].values
 
-#     number_segments = 3
-#     myPWLF = pwlf.PiecewiseLinFit(x, y, sorted_data=True)
-#     myPWLF.fit(number_segments)
+    number_segments = 3
+    myPWLF = pwlf.PiecewiseLinFit(x, y, sorted_data=True)
+    myPWLF.fit(number_segments)
 
-#     xarr = np.linspace(min(x), max(x), num=1000)
-#     xguess = np.zeros(number_segments - 1)
-#     xguess[0:] = dict_bands[band][0]
+    xarr = np.linspace(min(x), max(x), num=1000)
+    xguess = np.zeros(number_segments - 1)
+    xguess[0:] = dict_bands[band][0]
 
-#     res = minimize(myPWLF.fit_with_breaks_opt, xguess)
+    res = minimize(myPWLF.fit_with_breaks_opt, xguess)
 
-#     fit2 = myPWLF.fit_with_breaks([np.min(x)] + dict_bands[band][0] + [np.max(x)])
-#     yfit2 = myPWLF.predict(xarr)
-#     fitvar2 = myPWLF.prediction_variance(xarr)
-#     fitsigma2 = np.sqrt(fitvar2)
-#     slope2 = myPWLF.slopes * 100
+    fit2 = myPWLF.fit_with_breaks([np.min(x)] + dict_bands[band][0] + [np.max(x)])
+    yfit2 = myPWLF.predict(xarr)
+    fitvar2 = myPWLF.prediction_variance(xarr)
+    fitsigma2 = np.sqrt(fitvar2)
+    slope2 = myPWLF.slopes * 100
 
-#     xbreaks = np.zeros(number_segments + 1)
-#     xbreaks[0] = np.min(x)
-#     xbreaks[-1] = np.max(x)
-#     xbreaks[1:-1] = res.x
+    xbreaks = np.zeros(number_segments + 1)
+    xbreaks[0] = np.min(x)
+    xbreaks[-1] = np.max(x)
+    xbreaks[1:-1] = res.x
 
-#     fit = myPWLF.fit_with_breaks(xbreaks)
-#     yfit = myPWLF.predict(xarr)
-#     fitvar = myPWLF.prediction_variance(xarr)
-#     fitsigma = np.sqrt(fitvar)
+    fit = myPWLF.fit_with_breaks(xbreaks)
+    yfit = myPWLF.predict(xarr)
+    fitvar = myPWLF.prediction_variance(xarr)
+    fitsigma = np.sqrt(fitvar)
 
-#     print "{0}-Band".format(band)
-#     print "Number of Parameters: {0}".format(myPWLF.n_parameters)
-#     print "Best Fit: ", myPWLF.slopes * 100
-#     print "Manual Fit: ", slope2
-#     print redchisq(y, myPWLF.predict(x), n=myPWLF.n_parameters)
+    print ("{0}-Band".format(band))
+    print ("Number of Parameters: {0}".format(myPWLF.n_parameters))
+    print ("Best Fit: ", myPWLF.slopes * 100)
+    print ("Manual Fit: ", slope2)
+    print (redchisq(y, myPWLF.predict(x), n=myPWLF.n_parameters))
 
-#     fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(10, 9), sharex=True,
-#                                    gridspec_kw={'height_ratios': [4, 1]})
+    fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(10, 9), sharex=True,
+                                   gridspec_kw={'height_ratios': [4, 1]})
 
-#     ax1.plot(x, y, marker='*', ms=10, ls='', c='k', label='Observed Data')
-#     ax1.plot(xarr, yfit, ls='-', lw=1.5, c='blue', label='Optimised Fit')
-#     ax1.plot(xarr, yfit2, ls='--', lw=1.5, c='darkgreen', label='Manual BreakPoints Fit')
-#     ax1.fill_between(xarr, yfit - (fitsigma * 3), yfit + (fitsigma * 3), alpha=0.4, color='red')
-#     ax1.fill_between(xarr, yfit2 - (fitsigma2 * 3), yfit2 + (fitsigma2 * 3), alpha=0.2, color='blue')
+    ax1.plot(x, y, marker='*', ms=10, ls='', c='k', label='Observed Data')
+    ax1.plot(xarr, yfit, ls='-', lw=1.5, c='blue', label='Optimised Fit')
+    ax1.plot(xarr, yfit2, ls='--', lw=1.5, c='darkgreen', label='Manual BreakPoints Fit')
+    ax1.fill_between(xarr, yfit - (fitsigma * 3), yfit + (fitsigma * 3), alpha=0.4, color='red')
+    ax1.fill_between(xarr, yfit2 - (fitsigma2 * 3), yfit2 + (fitsigma2 * 3), alpha=0.2, color='blue')
 
-#     ax1.set_ylim(dict_bands[band][4], dict_bands[band][3])
-#     ax1.legend(markerscale=2, fontsize=12)
-#     ax1.yaxis.set_ticks_position('both')
-#     ax1.xaxis.set_ticks_position('both')
-#     ax1.yaxis.set_major_locator(MultipleLocator(dict_bands[band][1]))
-#     ax1.yaxis.set_minor_locator(MultipleLocator(dict_bands[band][2]))
-#     ax1.xaxis.set_major_locator(MultipleLocator(20))
-#     ax1.xaxis.set_minor_locator(MultipleLocator(2))
-#     ax1.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=14)
-#     ax1.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=14)
-#     ax1.set_title(r'${0}$-Band'.format(band), fontsize=16)
-#     ax1.set_ylabel('Apparent Magnitude', fontsize=16)
+    ax1.set_ylim(dict_bands[band][4], dict_bands[band][3])
+    ax1.legend(markerscale=2, fontsize=12)
+    ax1.yaxis.set_ticks_position('both')
+    ax1.xaxis.set_ticks_position('both')
+    ax1.yaxis.set_major_locator(MultipleLocator(dict_bands[band][1]))
+    ax1.yaxis.set_minor_locator(MultipleLocator(dict_bands[band][2]))
+    ax1.xaxis.set_major_locator(MultipleLocator(20))
+    ax1.xaxis.set_minor_locator(MultipleLocator(2))
+    ax1.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=14)
+    ax1.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=14)
+    ax1.set_title(r'${0}$-Band'.format(band), fontsize=16)
+    ax1.set_ylabel('Apparent Magnitude', fontsize=16)
 
-#     s1 = (myPWLF.slopes)[1]
-#     s2 = (myPWLF.slopes)[2]
-#     yticks = ax1.get_yticks(minor=True)
+    s1 = (myPWLF.slopes)[1]
+    s2 = (myPWLF.slopes)[2]
+    yticks = ax1.get_yticks(minor=True)
 
-#     for xbreak in xbreaks:
-#         ax1.axvline(xbreak, ls='--', lw=0.8, c='k')
-#         ax2.axvline(xbreak, ls='--', lw=0.8, c='k')
-#         ax1.text(xbreak + 0.5, yticks[-7], '{:.1f} d'.format(xbreak), rotation=90, color='brown', fontsize=12)
+    for xbreak in xbreaks:
+        ax1.axvline(xbreak, ls='--', lw=0.8, c='k')
+        ax2.axvline(xbreak, ls='--', lw=0.8, c='k')
+        ax1.text(xbreak + 0.5, yticks[-7], '{:.1f} d'.format(xbreak), rotation=90, color='brown', fontsize=12)
 
-#     ax1.text((xbreaks[1] + xbreaks[2]) / 2, yticks[0], '$s_1$={:.2f}'.format(s1 * 100), color='r', fontsize=14)
-#     ax1.text((xbreaks[2] + xbreaks[3]) / 2, yticks[0], '$s_2$={:.2f}'.format(s2 * 100), color='r', fontsize=14)
+    ax1.text((xbreaks[1] + xbreaks[2]) / 2, yticks[0], '$s_1$={:.2f}'.format(s1 * 100), color='r', fontsize=14)
+    ax1.text((xbreaks[2] + xbreaks[3]) / 2, yticks[0], '$s_2$={:.2f}'.format(s2 * 100), color='r', fontsize=14)
 
-#     ax2.scatter(x, y - myPWLF.predict(x), marker='^', c='k', label=None)
+    ax2.scatter(x, y - myPWLF.predict(x), marker='^', c='k', label=None)
 
-#     ax2.set_ylim(-0.13, 0.13)
-#     ax2.yaxis.set_ticks_position('both')
-#     ax2.xaxis.set_ticks_position('both')
-#     ax2.yaxis.set_major_locator(MultipleLocator(0.1))
-#     ax2.yaxis.set_minor_locator(MultipleLocator(0.02))
-#     ax2.xaxis.set_major_locator(MultipleLocator(20))
-#     ax2.xaxis.set_minor_locator(MultipleLocator(2))
-#     ax2.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=14)
-#     ax2.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=14)
-#     ax2.set_xlabel('Time Since Explosion [Days]', fontsize=16)
-#     ax2.set_ylabel(r'Residuals', fontsize=16)
+    ax2.set_ylim(-0.13, 0.13)
+    ax2.yaxis.set_ticks_position('both')
+    ax2.xaxis.set_ticks_position('both')
+    ax2.yaxis.set_major_locator(MultipleLocator(0.1))
+    ax2.yaxis.set_minor_locator(MultipleLocator(0.02))
+    ax2.xaxis.set_major_locator(MultipleLocator(20))
+    ax2.xaxis.set_minor_locator(MultipleLocator(2))
+    ax2.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=14)
+    ax2.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=14)
+    ax2.set_xlabel('Time Since Explosion [Days]', fontsize=16)
+    ax2.set_ylabel(r'Residuals', fontsize=16)
 
-#     fig.subplots_adjust(hspace=0.01)
-#     fig.savefig('PLOT_FitPieceWise{0}.pdf'.format(band), format='pdf', dpi=2000, bbox_inches='tight')
-#     plt.show()
-#     plt.close(fig)
-# # ------------------------------------------------------------------------------------------------------------------- #
+    fig.subplots_adjust(hspace=0.01)
+    fig.savefig('PLOT_FitPieceWise{0}.pdf'.format(band), format='pdf', dpi=2000, bbox_inches='tight')
+    plt.show()
+    plt.close(fig)
+# ------------------------------------------------------------------------------------------------------------------- #

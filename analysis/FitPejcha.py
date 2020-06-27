@@ -56,7 +56,7 @@ velmod_cols = ['JD', 'Vel']
 photmod_cols = ['JD', 0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 bol_cols = ['JD', 'Lum', 'Err1', 'Err2', 'TErr']
 
-dict_bands = {'U': 0, 'B': 1, 'V': 2, 'R': 3, 'I': 4, 'J': 5, 'H': 6, 'K': 7, 'g': 9, 'r': 10, 'i': 11, 'z': 12, 
+dict_bands = {'U': 0, 'B': 1, 'V': 2, 'R': 3, 'I': 4, 'J': 5, 'H': 6, 'K': 7, 'g': 9, 'r': 10, 'i': 11, 'z': 12,
               'uvw2': 13, 'uvm2': 14, 'uvw1': 15, 'u': 16, 'b': 17, 'v': 18, 'Z': 19, 'Y': 20}
 dict_codes = dict(zip(dict_bands.values(), dict_bands.keys()))
 
@@ -80,7 +80,7 @@ def jd_to_cald(julian_day):
     """
     time_tuple = jd2gcal(epoch, julian_day - epoch)
     cal_date = date(*time_tuple[0:3]).strftime("%Y-%m-%d")
-    
+
     return cal_date
 
 
@@ -133,9 +133,9 @@ obsbol_df = pd.read_csv(obsbol_file, sep='\s+', engine='python')[['Date', 'JD', 
 
 obsvel_df.columns = [['Date', 'Val', 'Err']]
 obsphot_df.columns = [['FILTER', 'JD', 'Val', 'Err']]
-obsbol_df = obsbol_df[(obsbol_df.Date != '2014-11-06') & (obsbol_df.Date != '2015-06-05') & 
-                    (obsbol_df.Date != '2014-11-05') & (obsbol_df.Date != '2014-12-02') & 
-                    (obsbol_df.Date != '2015-05-23')]
+obsbol_df = obsbol_df[(obsbol_df.Date != '2014-11-06') & (obsbol_df.Date != '2015-06-05') &
+                      (obsbol_df.Date != '2014-11-05') & (obsbol_df.Date != '2014-12-02') &
+                      (obsbol_df.Date != '2015-05-23')]
 
 obsvel_df['Ref'] = 0
 obsvel_df['DataSet'] = 0
@@ -143,7 +143,7 @@ obsvel_df['Band'] = 0
 obsvel_df = obsvel_df.replace('INDEF', np.nan, regex=True)
 obsvel_df['JD'] = obsvel_df['Date'].apply(lambda x: cald_to_jd(x) - JD_offset)
 obsvel_df['Val'] = obsvel_df['Val'].apply(lambda x: (((5169 - float(x)) / 5169) * light_speed))
-obsvel_df['Err'] = obsvel_df['Err'].apply(lambda x: (((float(x))/ 5169) * light_speed))
+obsvel_df['Err'] = obsvel_df['Err'].apply(lambda x: ((float(x) / 5169) * light_speed))
 obsvel_df[['JD', 'Val', 'Err']] = obsvel_df[['JD', 'Val', 'Err']].round(precision)
 obsvel_df = obsvel_df[input_cols].dropna(axis=0, how='any')
 
@@ -190,11 +190,11 @@ velinp_df = input_df[input_df['DataSet'] == 0]
 velinp_df = velinp_df[velinp_df['JD'] < JDvel_max]
 velmod_df = velmod_df[velmod_df['JD'] < JDvel_max]
 
-ax1.errorbar(vel_df['JD'], vel_df['Vel'], yerr=vel_df['Err'], c='k', marker='*', linestyle='', linewidth=0.5, 
-            capsize=2, capthick=1, label=None)
+ax1.errorbar(vel_df['JD'], vel_df['Vel'], yerr=vel_df['Err'], c='k', marker='*', linestyle='', linewidth=0.5,
+             capsize=2, capthick=1, label=None)
 
 ax1.plot(velmod_df['JD'], velmod_df['Vel'], marker=None, c='k', linestyle='--', label='_nolegend_')
-    
+
 set_plotparams(ax1)
 ax1.set_xlim(JDvel_min - 20, JDvel_max + 20)
 ax1.yaxis.set_ticks_position('both')
@@ -219,14 +219,13 @@ photinp_df = photinp_df[photinp_df['JD'] < JDphot_max]
 photmod_df = photmod_df[photmod_df['JD'] < JDphot_max]
 
 for band, band_df in photinp_df.groupby('Band'):
-    ax2.scatter(band_df['JD'], band_df['Val'] + dict_markers[band][0], marker=dict_markers[band][1], 
-               c=dict_markers[band][2], label=dict_codes[band] + str(dict_markers[band][3]))
-    ax2.errorbar(band_df['JD'], band_df['Val'] + dict_markers[band][0], yerr=band_df['Err'], c=dict_markers[band][2], 
-                fmt='', linestyle='', linewidth=0.5, capsize=2, capthick=1, label=None)
+    ax2.scatter(band_df['JD'], band_df['Val'] + dict_markers[band][0], marker=dict_markers[band][1],
+                c=dict_markers[band][2], label=dict_codes[band] + str(dict_markers[band][3]))
+    ax2.errorbar(band_df['JD'], band_df['Val'] + dict_markers[band][0], yerr=band_df['Err'], c=dict_markers[band][2],
+                 fmt='', linestyle='', linewidth=0.5, capsize=2, capthick=1, label=None)
 
 for band in photinp_df['Band'].unique():
-    ax2.plot(photmod_df['JD'], photmod_df[band] + dict_markers[band][0], marker=None, c='k', linestyle='--', 
-            label='_nolegend_')
+    ax2.plot(photmod_df['JD'], photmod_df[band] + dict_markers[band][0], marker=None, c='k', ls='--', label=None)
 
 set_plotparams(ax2)
 ax2.invert_yaxis()
@@ -249,7 +248,7 @@ ax3 = fig3.add_subplot(111)
 obsbol_df['JD'] = obsbol_df['JD'].apply(lambda x: x - JD_offset)
 ax3.semilogy(obsbol_df['JD'], obsbol_df['Lum'], c='b', marker='*', linestyle='', linewidth=0.5, label='Observed')
 ax3.semilogy(bol_df['JD'], bol_df['Lum'], c='k', linestyle='--', linewidth=0.5, label='Fit')
-    
+
 set_plotparams(ax3)
 ax3.set_xlim(JDphot_min - 20, JDphot_max + 20)
 ax3.yaxis.set_ticks_position('both')
@@ -259,4 +258,3 @@ ax3.set_ylabel(r'Quasi-Bolometric Luminosity [$\rm erg\ s^{-1}$]', fontsize=12)
 plt.show()
 plt.close(fig3)
 # ------------------------------------------------------------------------------------------------------------------- #
-

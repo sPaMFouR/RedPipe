@@ -168,8 +168,8 @@ for band in list_bands:
     opt, cov = curve_fit(cowenfunc, band_df['JD'], band_df['Flux'], sigma=band_df['FluxErr'], p0=dict_bands[band][0])
     offset = -date_discovery
 
-    print np.round(opt, 4)
-    print np.sqrt(np.diagonal(cov))
+    print (np.round(opt, 4))
+    print (np.sqrt(np.diagonal(cov)))
 #     print redchisq(band_df['Flux'], cowenfunc(band_df['JD'], *opt), sd=band_df['FluxErr'])
 
     jdarr = np.arange(opt[2], band_df['JD'].max(), 0.1)
@@ -208,7 +208,7 @@ exp_mean = np.mean(expepochs)
 exp_err = (np.std(expepochs) ** 2 + (np.sum(np.array(expepochs_err) ** 2)) / len(expepochs) ** 2) ** 0.5
 ax.set_title('Mean Explosion Epoch = {0:.1f}$\pm${1:.1f}'.format(exp_mean, exp_err), fontsize=16)
 
-print maxepochs - exp_mean + date_discovery
+print (maxepochs - exp_mean + date_discovery)
 
 fig.subplots_adjust(hspace=0.01, wspace=0.01)
 # fig.savefig('PLOT_FitRiseTime.pdf', format='pdf', dpi=2000, bbox_inches='tight')

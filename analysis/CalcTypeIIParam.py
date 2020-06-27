@@ -123,7 +123,7 @@ def get_hamuyni(data_bol):
     lumErr2 = np.sqrt(data_bol['BolErr'].apply(lambda x: (x / data_bol.shape[0]) ** 2).sum())
     nimass = hamuyni(lum, phase)
     niErr = hamuyni(lum + (lumErr1 ** 2 + lumErr2 ** 2) ** 0.5, phase) - nimass
-    print "Mean Phase = {0:0.1f}".format(phase)
+    print ("Mean Phase = {0:0.1f}".format(phase))
     print (r"Mean Tail Luminosity {0:0.3e}+/-{1:0.3e}".format(lum, (lumErr1 ** 2 + lumErr2 ** 2) ** 0.5))
     print (r"$^{56}Ni$ Mass [Hamuy (2003)]" + " = {0:0.3f}+/-{1:0.3f}".format(nimass, niErr))
 
@@ -270,7 +270,7 @@ get_hamuyni(data_bol)
 get_steepnessni(steepness)
 
 get_litvinovaparams(mv50, deltat, vph)
-get_litvinovaparams(mv50-mv50Err, deltat+deltatErr, vph+vphErr)
+get_litvinovaparams(mv50 - mv50Err, deltat + deltatErr, vph + vphErr)
 # get_popovparams(mv50, deltat, vph)
 
 dist = np.zeros(7)
@@ -286,7 +286,7 @@ dist[4], dist_err[4] = get_scmolivares('B', vminus30, vminus30Err, Bminus30, Bmi
 dist[5], dist_err[5] = get_scmolivares('V', vminus30, vminus30Err, Vminus30, Vminus30Err, VIminus30, VIminus30Err)
 dist[6], dist_err[6] = get_scmolivares('I', vminus30, vminus30Err, Iminus30, Iminus30Err, VIminus30, VIminus30Err)
 
-print get_scmolivares('V', 2252, 54, 17.31, 0.02, 0.954, 0.01)
-print np.round(np.mean(dist), 2)
-print np.round((np.std(dist) ** 2 + np.sum(np.square(dist_err)) / 7 ** 2) ** 0.5, 2)
+print (get_scmolivares('V', 2252, 54, 17.31, 0.02, 0.954, 0.01))
+print (np.round(np.mean(dist), 2))
+print (np.round((np.std(dist) ** 2 + np.sum(np.square(dist_err)) / 7 ** 2) ** 0.5, 2))
 # ------------------------------------------------------------------------------------------------------------------- #

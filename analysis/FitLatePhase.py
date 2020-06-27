@@ -252,13 +252,13 @@ linefunc = line(jdarr2, m, c) / 1e40
 fit2 = unp.nominal_values(linefunc)
 sigma2 = unp.std_devs(linefunc)
 
-print np.round(opt, 4)
-print np.sqrt(np.diagonal(cov))
-print redchisq(data_df['Lum'], latephasefunc(data_df['Phase'], *opt), sd=data_df['LumErr'])
+print (np.round(opt, 4))
+print (np.sqrt(np.diagonal(cov)))
+print (redchisq(data_df['Lum'], latephasefunc(data_df['Phase'], *opt), sd=data_df['LumErr']))
 
-print np.round(opt2, 4)
-print np.sqrt(np.diagonal(cov2))
-print redchisq(data2_df['Lum'], line(data2_df['Phase'], *opt2), sd=data2_df['LumErr'])
+print (np.round(opt2, 4))
+print (np.sqrt(np.diagonal(cov2)))
+print (redchisq(data2_df['Lum'], line(data2_df['Phase'], *opt2), sd=data2_df['LumErr']))
 
 ax.plot(data_df['Phase'], data_df['Lum'] / 1e40, marker='*', ls='', ms=12, markerfacecolor='dodgerblue', c='k',
         label='Observed Data')
@@ -294,4 +294,4 @@ fig.subplots_adjust(hspace=0.01, wspace=0.01)
 fig.savefig('PLOT_FitLatePhase.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()
 plt.close(fig)
-# ------------------------------------------------------------------------------------------------------------------- #s
+# ------------------------------------------------------------------------------------------------------------------- #

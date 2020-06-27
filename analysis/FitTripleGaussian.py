@@ -54,8 +54,11 @@ def plot_confintervals(ax_obj, optpar, covpar, xarr, fcolor='orange'):
     Returns:
         None
     """
+    def err(xarr, h, c, w):
+        return h * unp.exp(-(xarr - c) ** 2 / (2 * w ** 2))
+
     h1, c1, w1, h2, c2, w2, h3, c3, w3, offset = unc.correlated_values(optpar, covpar)
-    func = h1 * unp.exp(-(xarr - c1) ** 2 / (2 * w1 ** 2)) + h2 * unp.exp(-(xarr - c2) ** 2 / (2 * w2 ** 2)) + h3 * unp.exp(-(xarr - c3) ** 2 / (2 * w3 ** 2)) + offset
+    func = err(xarr, h1, c1, w1) + err(xarr, h2, c2, w2) + err(xarr, h3, c3, w3) + offset
     fit = unp.nominal_values(func)
     sigma = unp.std_devs(func)
 
@@ -122,9 +125,9 @@ covha = [abs(err[index]) for index in [3, 4, 5, 9]]
 optn2 = [abs(opt[index]) for index in [6, 7, 8, 9]]
 covn2 = [abs(err[index]) for index in [6, 7, 8, 9]]
 
-print optn1
-print optha
-print optn2
+print (optn1)
+print (optha)
+print (optn2)
 # ------------------------------------------------------------------------------------------------------------------- #
 
 

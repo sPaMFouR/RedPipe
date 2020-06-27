@@ -144,15 +144,14 @@ xdata = np.linspace(0.0, 0.55, 1000)
 opt, cov = curve_fit(line, data['S'], data['LogMNi'], p0=[-3, -1])
 a = linregress(data['S'], data['LogMNi'])
 
-print(a, cov)
-print(pearsonr(data['S'], data['LogMNi']))
-print(spearmanr(data['S'], data['LogMNi']))
+print (a, cov)
+print (pearsonr(data['S'], data['LogMNi']))
+print (spearmanr(data['S'], data['LogMNi']))
 
-print(10 ** (-6.2995 * 0.131 - 0.8147))
-print(10 ** (a[0] * 0.131 + a[1]))
-print(10 ** (a[0] * 0.121 + a[1]) - 10 ** (a[0] * 0.131 + a[1]))
+print (10 ** (-6.2995 * 0.131 - 0.8147))
+print (10 ** (a[0] * 0.131 + a[1]))
+print (10 ** (a[0] * 0.121 + a[1]) - 10 ** (a[0] * 0.131 + a[1]))
 # data = data.drop('14dq', axis=0)
-
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
