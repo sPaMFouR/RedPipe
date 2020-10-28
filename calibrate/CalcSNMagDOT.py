@@ -367,11 +367,11 @@ def calculate_psfmag(alsfile, zpmag_df, zperr_df):
     mag_df = mag_df.replace('INDEF', np.nan).sort_index().set_index(['ID', 'IFILTER'])
     # mag_df = mag_df.sort_index().sort_values(by='IFILTER', kind='mergesort')
     mag_df[['MAG_2', 'ERR_2']] = mag_df[['MAG_2', 'ERR_2']].astype('float64')
-    
+
     psfstars_df[['MAG_2', 'ERR_2']] = mag_df[['MAG_2', 'ERR_2']]
     psfstars_df['PSFCOR'] = psfstars_df['PSFMAG'] - psfstars_df['MAG_2']
     psfstars_df['PSFCORERR'] = add_series([psfstars_df['PSFERR'], psfstars_df['ERR_2']], err=True)
-    
+
     data_grouped = psfstars_df[['PSFCOR', 'PSFCORERR', 'FILTER']].dropna(how='any').groupby(['FILTER'])
     psfcor_mean = {}
     psfcor_meanerr = {}

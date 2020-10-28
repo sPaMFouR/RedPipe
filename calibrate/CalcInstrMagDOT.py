@@ -140,9 +140,9 @@ def display_text(text_to_display):
     Returns:
         None
     """
-    print ("\n" + "# " + "-" * (12 + len(text_to_display)) + " #")
-    print ("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
-    print ("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
+    print("\n" + "# " + "-" * (12 + len(text_to_display)) + " #")
+    print("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
+    print("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
