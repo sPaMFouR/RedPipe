@@ -43,14 +43,6 @@ data_max = 60000
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Extinction Coefficients (In Magnitudes) For Hanle In Different Photometric Bands
-# ------------------------------------------------------------------------------------------------------------------- #
-eeta = {'7BesU': 0.49, '6BesB': 0.32, '5BesV': 0.21, '4BesR': 0.13, '3BesI': 0.08}
-eeta_err = {'7BesU': 0.09, '6BesB': 0.06, '5BesV': 0.05, '4BesR': 0.04, '3BesI': 0.04}
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
 # Image Header Keywords
 # ------------------------------------------------------------------------------------------------------------------- #
 RA_keyword = 'RA'
@@ -65,9 +57,9 @@ EXPTIME_keyword = 'EXPTIME'
 # ------------------------------------------------------------------------------------------------------------------- #
 # Object Details
 # ------------------------------------------------------------------------------------------------------------------- #
-OBJECT_NAME = '2018hna'
-OBJECT_RA = '12:26:12.05'
-OBJECT_DEC = '+58:18:51.1'
+OBJECT_NAME = 'GRB200412B'
+OBJECT_RA = '18:33:15.21'
+OBJECT_DEC = '+62:31:57.1'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -862,7 +854,8 @@ aperture_values2 = '1,4'
 # Remove Residual Files From Previous Run Of Photometry Tasks (PHOT, PSTSELECT, PSF, ALLSTAR)
 # ------------------------------------------------------------------------------------------------------------------- #
 if remove_resfile:
-    for text in ['tmp*', '*pst.*', '*.psf.*', '*psg.*', '*.als.*', '*arj.*', '*.sub.*', '*.mag.*', 'list_*', 'log*']:
+    for text in ['tmp*', '*pst.*', '*.psf.*', '*psg.*', '*.als.*', '*arj.*', '*.sub.*', '*.mag.*', 'list_*', 'log*',
+                 'output_*']:
         remove_similar_files(common_text=text)
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -912,20 +905,17 @@ if phot_index == 1:
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Groups Mag Files From PHOT Task Into A Separate List And Makes A List Of Epochs Of Observation
-# ------------------------------------------------------------------------------------------------------------------- #
-mag_suffix = 4
-list_mag = group_similar_files('', '*.mag.' + str(mag_suffix))
-list_dates = set([file_name[3:13] for file_name in list_mag])
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
 # Groups MAG Files Date-Wise Into A File 'list_date_mag4', Applies TXDUMP Task To Obtain 'output_date_mag4'
 # Computes Tabular Magnitude Files From MAG Files Generated Through Aperture Photometry
 # ------------------------------------------------------------------------------------------------------------------- #
-for date in list_dates:
-    txdump('*' + date + '*.mag.' + str(mag_suffix), output_file='output_' + date + '_mag' + str(mag_suffix))
-    tabular_mag(input_file='output_' + date + '_mag' + str(mag_suffix), output_file='OUTPUT_tabular_' + date)
+mag_suffix = 4
+list_mag = group_similar_files('', '*.mag.' + str(mag_suffix))
+# list_dates = set([file_name[3:13] for file_name in list_mag])
+
+for magfile in list_mag:
+    identifier = magfile.split('_')[1] + '-' + magfile.split('-')[-1].split('.')[0]
+    txdump(magfile, output_file='output_' + identifier + '_mag' + str(mag_suffix))
+    tabular_mag('output_' + identifier + '_mag' + str(mag_suffix), output_file='OUTPUT_tabular_' + identifier)
 
 display_text("Tabular Magnitudes Have Been Computed For MAG Files")
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -935,9 +925,12 @@ display_text("Tabular Magnitudes Have Been Computed For MAG Files")
 # Computes Tabular Magnitude Files From ALS Files Generated Through PSF Photometry
 # ------------------------------------------------------------------------------------------------------------------- #
 als_suffix = 1
-for date in list_dates:
-    txdump('*' + date + '*.als.' + str(als_suffix), output_file='output_' + date + '_als' + str(als_suffix))
-    tabular_mag('output_' + date + '_als' + str(als_suffix), output_file='OUTPUT_tabularpsf_' + date)
+list_als = group_similar_files('', '*.als.' + str(als_suffix))
+
+for alsfile in list_als:
+    identifier = alsfile.split('_')[1] + '-' + alsfile.split('-')[-1].split('.')[0]
+    txdump(alsfile, output_file='output_' + identifier + '_als' + str(als_suffix))
+    tabular_mag('output_' + identifier + '_als' + str(als_suffix), output_file='OUTPUT_tabularpsf_' + identifier)
 
 display_text("Tabular Magnitudes Have Been Computed For ALS Files")
 # ------------------------------------------------------------------------------------------------------------------- #

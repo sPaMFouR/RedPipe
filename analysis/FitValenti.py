@@ -20,11 +20,10 @@ from lmfit import Minimizer, Parameters, report_fit
 # Global Variables
 # ------------------------------------------------------------------------------------------------------------------- #
 name_SN = '2017iro'
-file_name = 'BolLC_2017iro.dat'
+# file_name = 'BolLC_2017iro.dat'
+file_name = '2017iro_TempSubBolLC.dat'
 date_explosion = 2458083.1
-fit_epoch = 2458120
-guess_mni = 0.06
-guess_taum = 1.5e6
+fit_epoch = 2458118
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -96,6 +95,9 @@ print ("Epoch of Explosion: {0:>10.2f}\n".format(est_dateexp))
 # ------------------------------------------------------------------------------------------------------------------- #
 # Create A Set Of Parameters
 # ------------------------------------------------------------------------------------------------------------------- #
+guess_mni = 0.15
+guess_taum = est_taum
+
 params = Parameters()
 params.add('mni', value=guess_mni)
 params.add('taum', value=guess_taum)
@@ -124,10 +126,10 @@ def calc_lum(param, list_time):
     lph_err = np.zeros(len(list_time))
 
     for index, time in enumerate(time_int):
-        lph[index] = mass_solar * mni * np.exp(-time ** 2) * ((eni - eco) * quad(funca, 0, time, args=(y,))[0] +
-                                                              eco * quad(funcb, 0, time, args=(y, s))[0])
-        lph_err[index] = mass_solar * mni * np.exp(-time ** 2) * ((eni - eco) * quad(funca, 0, time, args=(y,))[1] +
-                                                                  eco * quad(funcb, 0, time, args=(y, s))[1])
+        lph[index] = mass_solar * mni * np.exp(-time ** 2) * ((eni - eco) * quad(funca, 0, time, args=(y,))[0]
+                                                              + eco * quad(funcb, 0, time, args=(y, s))[0])
+        lph_err[index] = mass_solar * mni * np.exp(-time ** 2) * ((eni - eco) * quad(funca, 0, time, args=(y,))[1]
+                                                                  + eco * quad(funcb, 0, time, args=(y, s))[1])
     return [lph, lph_err]
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -152,6 +154,39 @@ def func_min(param, list_time, list_flux):
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
+# Function For Setting Plot Parameters
+# ------------------------------------------------------------------------------------------------------------------- #
+
+def set_plotparams(ax_obj, xticks=(50, 5), yticks=(1, 0.1), grid=True, fs=14, ms=1.5):
+    """
+    Sets plot parameters to the axes object 'ax_obj'.
+    Args:
+        ax_obj      : Axes object to be used for plotting and setting plot parameters
+        xticks      : X-Axis Major and Minor tick intervals
+        yticks      : Y-Axis Major and Minor tick intervals
+        grid        : Boolean stating whether to enable Grid in the plot
+        fs          : Font of the labels in the legend
+        ms          : Scaled marker size to be used in the legend
+    Returns:
+    """
+    if grid:
+        ax_obj.grid(True, which='major', ls='--', lw=1)
+
+    ax_obj.xaxis.set_ticks_position('both')
+    ax_obj.yaxis.set_ticks_position('both')
+    ax_obj.xaxis.set_major_locator(MultipleLocator(xticks[0]))
+    ax_obj.xaxis.set_minor_locator(MultipleLocator(xticks[1]))
+    ax_obj.yaxis.set_major_locator(MultipleLocator(yticks[0]))
+    ax_obj.yaxis.set_minor_locator(MultipleLocator(yticks[1]))
+    ax_obj.tick_params(axis='both', which='major', direction='in', width=1.6, length=9, color='k',
+                       labelcolor='k', labelsize=fs)
+    ax_obj.tick_params(axis='both', which='minor', direction='in', width=1.0, length=5, color='k',
+                       labelcolor='k', labelsize=fs)
+
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
 # Read Observational Bolometric Light Curve Data
 # ------------------------------------------------------------------------------------------------------------------- #
 data_df = pd.read_csv(file_name, sep='\s+', engine='python')
@@ -166,7 +201,7 @@ data_df = data_df[['JD', 'Phase', 'Time', 'Lum']].dropna()
 # ------------------------------------------------------------------------------------------------------------------- #
 # Minimize Using 'Least Squares' Technique
 # ------------------------------------------------------------------------------------------------------------------- #
-minner_object = Minimizer(func_min, params, fcn_args=(data_df['Time'], data_df['Lum']), nan_policy='omit')
+minner_object = Minimizer(func_min, params, fcn_args=(data_df['Time'], data_df['Lum']))
 result_fit = minner_object.minimize(method='leastsq', params=params, **{'maxfev': 100})
 data_df['FitLum'] = data_df['Lum'] + result_fit.residual
 
@@ -191,20 +226,64 @@ ax.text(datemax + 1, 1.5, r'Maximum Epoch', rotation=90, fontsize=12)
 
 ax.set_xlim(0, 40)
 ax.legend(frameon=False, markerscale=2, fontsize=12)
-ax.yaxis.set_ticks_position('both')
-ax.xaxis.set_ticks_position('both')
-ax.yaxis.set_major_locator(MultipleLocator(0.5))
-ax.yaxis.set_minor_locator(MultipleLocator(0.05))
-ax.xaxis.set_major_locator(MultipleLocator(10))
-ax.xaxis.set_minor_locator(MultipleLocator(1))
-ax.tick_params(which='major', direction='in', length=8, width=1.4, labelsize=14)
-ax.tick_params(which='minor', direction='in', length=4, width=0.7, labelsize=14)
-
+set_plotparams(ax, xticks=(10, 1), yticks=(0.5, 0.05))
 ax.set_xlabel('Time Since Explosion [Days]', fontsize=16)
 ax.set_ylabel(r'Bolometric Luminosity [x$\rm 10^{42}\ erg\ s^{-1}$]', fontsize=16)
 
 fig.savefig('PLOT_FitValenti.pdf', format='pdf', dpi=2000, bbox_inches='tight')
 plt.show()
 plt.close(fig)
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Fit Valenti Model For Various Explosion Dates
+# ------------------------------------------------------------------------------------------------------------------- #
+fit_epoch = 2458120
+guess_mni = 0.06
+guess_taum = 1.2e6
+
+list_date = np.arange(2458075, 2458085, 0.5)
+
+for date_exp in list_date:
+    data_df['Phase'] = (data_df['JD'] - date_exp).round(2)
+    data_df['Time'] = data_df['Phase'].apply(lambda x: 86400 * x).round(2)
+    data_df = data_df[data_df['JD'] <= fit_epoch]
+    data_df = data_df[['JD', 'Phase', 'Time', 'Lum']].dropna()
+
+    minner_object = Minimizer(func_min, params, fcn_args=(data_df['Time'].tolist(), data_df['Lum'].tolist()))
+    kws = {'options': {'maxiter': 100}}
+
+    try:
+        result_fit = minner_object.minimize()
+        data_df['FitLum'] = data_df['Lum'] + result_fit.residual
+
+        xaxis = np.linspace(data_df['Time'].min(), data_df['Time'].max(), 1000)
+        fit_lum, fit_lumerr = calc_lum(result_fit.params, xaxis)
+        datemax = xaxis[fit_lum.argmax()] / 86400.
+
+        print (report_fit(result_fit))
+        print (result_fit.chisqr)
+        print (result_fit.params)
+
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(111)
+
+        ax.scatter(data_df['Phase'], data_df['Lum'], label='Observation')
+        ax.plot([time / 86400 for time in xaxis], fit_lum, label='Valenti-Best Fit')
+        ax.plot(data_df['Phase'], calc_lum(params, data_df['Time'].tolist())[0], label='Valenti-Initial Fit')
+
+        ax.legend()
+        ax.set_xlim(0, 50)
+        set_plotparams(ax, xticks=(10, 2), yticks=(2.5e41, 0.5e41))
+        ax.set_title('Valenti Model - Least Square Fitting', fontsize=16)
+        ax.set_xlabel('Time Since Explosion [Seconds]', fontsize=16)
+        ax.set_ylabel(r'Bolometric Luminosity [x$\rm 10^{42} ergs\ s^{-1}$]', fontsize=16)
+
+        plt.show()
+        plt.close(fig)
+
+    except ValueError:
+        continue
 
 # ------------------------------------------------------------------------------------------------------------------- #

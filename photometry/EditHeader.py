@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
-# xxxxxxxxxxxxxxxxxxxxxxx-------------------------CALCULATION OF AIRMASS----------------------xxxxxxxxxxxxxxxxxxxxxxx #
+# xxxxxxxxxxxx---------MODIFIES HEADER IN THE HFOSC2 FITS FILES AND APPENDS AIRMASS DETAILS------------xxxxxxxxxxxxxx #
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
+
+__version__ = "---"
+__author__ = "Avinash Singh"
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Import Required Libraries
@@ -10,8 +13,6 @@ import re
 import glob
 import math
 import ephem
-import easygui
-import datetime
 from astropy.io import fits
 from astropy.coordinates import Angle
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -20,10 +21,9 @@ from astropy.coordinates import Angle
 # ------------------------------------------------------------------------------------------------------------------- #
 # Observatory Site Details
 # ------------------------------------------------------------------------------------------------------------------- #
-OBS_NAME = "Indian Astronomical Observatory, Hanle"
-OBS_LONG = '78:57:51'
-OBS_LAT = '32:46:46'
-OBS_ALT = 4486
+OBS_LONG = '79:41:06'
+OBS_LAT = '29:21:42'
+OBS_ALT = 2450
 OBS_TIMEZONE = +5.5
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -31,32 +31,32 @@ OBS_TIMEZONE = +5.5
 # ------------------------------------------------------------------------------------------------------------------- #
 # Image Header Keywords
 # ------------------------------------------------------------------------------------------------------------------- #
-RA_keyword = 'RA'
-DEC_keyword = 'DEC'
-UT_keyword = 'UT'
-DATE_keyword = 'DATE-OBS'
-DATEAVG_keyword = 'DATE-OBS'
 OBJECT_keyword = 'OBJECT'
 EXPTIME_keyword = 'EXPTIME'
-AIRMASS_keyword = 'AIRMASS'
+UT_keyword = 'UT'
+RA_keyword = 'OBJRA'
+DEC_keyword = 'OBJDEC'
+DATE_keyword = 'DATE-OBS'
+DATEAVG_keyword = 'DATE-AVG'
+BIASSEC_keyword = 'BIASSEC'
+CCDSEC_keyword = 'CCDSEC'
+TRIMSEC_keyword = 'TRIMSEC'
+
+modRA_keyword = 'RA'
+modDEC_keyword = 'DEC'
+
+OBJ_RA = '12:26:12.05'
+OBJ_DEC = '58:18:51.10'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Object Details
-# ------------------------------------------------------------------------------------------------------------------- #
-OBJECT_RA = '21:57:59.9'
-OBJECT_DEC = '+24:16:08.1'
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Function For File Handling
+# Functions For File Handling
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def group_similar_files(text_list, common_text, exceptions=''):
     """
-    Groups similar files based on the string 'common_text'. Writes the similar files
+    Groups similar files based on the string "common_text". Writes the similar files
     onto the list 'text_list' (only if this string is not empty) and appends the similar
     files to a list 'python_list'.
     Args:
@@ -71,7 +71,8 @@ def group_similar_files(text_list, common_text, exceptions=''):
         list_exception = exceptions.split(',')
         for file_name in glob.glob(common_text):
             for text in list_exception:
-                test = re.search(text, file_name)
+                test = re.search(str(text), file_name)
+                print(file_name)
                 if test:
                     try:
                         list_files.remove(file_name)
@@ -80,9 +81,9 @@ def group_similar_files(text_list, common_text, exceptions=''):
 
     list_files.sort()
     if len(text_list) != 0:
-        with open(text_list, 'w') as f:
-            for file_name in list_files:
-                f.write(file_name + '\n')
+        with open(str(text_list), "w") as f:
+            for index in range(0, len(list_files)):
+                f.write(str(list_files[index]) + "\n")
 
     return list_files
 
@@ -90,47 +91,24 @@ def group_similar_files(text_list, common_text, exceptions=''):
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Functions For Calculating AIRMASS, JD etc.
+# Calculates AIRMASS And Appends Respective Details In The Header
 # ------------------------------------------------------------------------------------------------------------------- #
+# date_mod = raw_input("Enter the prefix of recently observed files (Example: h2abj01 - 2018/10/01): ")
+list_files = group_similar_files('', common_text='*.fits')
 
-def add_radec(file_name):
-    """
-    Adds the RA & DEC of the image observed to the header of the file 'file_name'.
-    Args:
-        file_name : FITS file to which header detail is to be added
-    Returns:
-        None
-    """
-    global OBJECT_RA, OBJECT_DEC
-
-    file_header = fits.getheader(filename=str(file_name))
-    date_obs = file_header[str(DATE_keyword)]
-
-    file_header.set('DATE_OBS', str(date_obs))
-    file_header.set(str(RA_keyword), OBJECT_RA)
-    file_header.set(str(DEC_keyword), OBJECT_DEC)
-
-
-def calculate_airmass(file_name):
-    """
-    Calculates AIRMASS for the FITS file and appends respective details in the header of the file 'file_name'
-    Args:
-        file_name : FITS file whose header has to be edited
-    Returns:
-        None
-    """
+for file_name in list_files:
     hdulist = fits.open(file_name, mode='update')
     file_header = hdulist[0].header
-
+    print file_name
     if str(RA_keyword) in file_header.keys():
         object_ra = file_header[str(RA_keyword)]
     else:
-        object_ra = OBJECT_RA
+        object_ra = OBJ_RA
 
     if str(DEC_keyword) in file_header.keys():
         object_dec = file_header[str(DEC_keyword)]
     else:
-        object_dec = OBJECT_DEC
+        object_dec = OBJ_DEC
 
     date_avg = file_header[str(DATEAVG_keyword)]
     date_obs, time_utc = date_avg.split('T')
@@ -155,36 +133,25 @@ def calculate_airmass(file_name):
 
     object_alt = Angle(str(object_pos.alt) + ' degrees').degree
     airmass = 1 / math.cos(math.radians(90 - object_alt))
-    list_keywords = ['LAT', 'LONG', 'ALT', 'TIMEZONE', RA_keyword, DEC_keyword, UT_keyword,
+    list_keywords = ['LAT', 'LONG', 'ALT', 'TIMEZONE', modRA_keyword, modDEC_keyword, UT_keyword,
                      DATE_keyword, 'JD', 'ST', 'ELE', 'AZ', 'AIRMASS']
     dict_header = {'LAT': str(OBS_LAT), 'LONG': str(OBS_LONG), 'ALT': str(OBS_ALT), 'TIMEZONE': str(OBS_TIMEZONE),
-                   RA_keyword: str(object_ra), DEC_keyword: str(object_dec), DATE_keyword: str(date_obs),
+                   modRA_keyword: OBJ_RA, modDEC_keyword: OBJ_DEC, DATE_keyword: str(date_obs),
                    UT_keyword: str(time_utc), 'JD': str(julian_day), 'ST': str(time_sidereal),
                    'ELE': str(object_pos.alt), 'AZ': str(object_pos.az), 'AIRMASS': str(airmass)}
+
+    if object_ra == '' or object_dec == '':
+        list_keywords = list_keywords[:-3]
+
+    for keyword in [TRIMSEC_keyword, BIASSEC_keyword, CCDSEC_keyword]:
+        if keyword in file_header.keys():
+            file_header.remove(keyword, remove_all=True)
 
     for keyword in list_keywords:
         if keyword in file_header.keys():
             file_header.remove(keyword, remove_all=True)
         file_header.append(card=(keyword, dict_header[keyword]))
 
-    hdulist.flush()
     hdulist.close()
 
-
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Manual Setup - GUI Code
-# ------------------------------------------------------------------------------------------------------------------- #
-ctext = easygui.enterbox(msg='Enter The Common Text Of Files For Which Airmass Is To Be Calculated?',
-                         title='Airmass Calculation', default='*.fits')
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Calculates AIRMASS etc. & Appends Respective Details In The Header
-# ------------------------------------------------------------------------------------------------------------------- #
-for file_name in group_similar_files("", common_text=str(ctext)):
-    calculate_airmass(file_name=file_name)
 # ------------------------------------------------------------------------------------------------------------------- #

@@ -34,8 +34,7 @@ OBS_TIMEZONE = +5.5
 RA_keyword = 'RA'
 DEC_keyword = 'DEC'
 UT_keyword = 'UT'
-DATE_keyword = 'DATE-OBS'
-DATEAVG_keyword = 'DATE-OBS'
+DATE_keyword = 'DATE_OBS'
 OBJECT_keyword = 'OBJECT'
 EXPTIME_keyword = 'EXPTIME'
 AIRMASS_keyword = 'AIRMASS'
@@ -132,8 +131,8 @@ def calculate_airmass(file_name):
     else:
         object_dec = OBJECT_DEC
 
-    date_avg = file_header[str(DATEAVG_keyword)]
-    date_obs, time_utc = date_avg.split('T')
+    date_obs = file_header[str(DATE_keyword)]
+    time_utc = file_header[str(UT_keyword)]
 
     datetime_utc = str(date_obs) + ' ' + str(time_utc)
     julian_day = ephem.julian_date(datetime_utc)
