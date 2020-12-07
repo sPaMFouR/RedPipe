@@ -10,9 +10,7 @@ import os
 import re
 import sys
 import glob
-import math
 import ephem
-import datetime
 import numpy as np
 import pandas as pd
 import easygui as eg
@@ -665,7 +663,7 @@ def calculate_airmass(textlist_files):
 
         time_sidereal = telescope.sidereal_time()
         object_alt = Angle(str(obj_pos.alt) + ' degrees').degree
-        airmass = 1 / math.cos(math.radians(90 - object_alt))
+        airmass = 1 / np.cos(np.radians(90 - object_alt))
 
         list_keywords = ['OBSERVAT', 'OBS_LAT', 'OBS_LONG', 'OBS_ALT', 'TIMEZONE', 'DATE_OBS', 'UT', 'JD', 'ST', 'RA',
                          'DEC', 'ALT', 'AZ', 'AIRMASS']
@@ -676,7 +674,7 @@ def calculate_airmass(textlist_files):
 
         for keyword in list_keywords:
             if keyword in file_header.keys():
-                file_header.remove(keyword, remove_all=True)
+                file_header.remove(keyword, ignore_missing=True, remove_all=True)
             file_header.append(card=(keyword, dict_header[keyword]))
 
         hdulist.flush()

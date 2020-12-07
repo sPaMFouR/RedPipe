@@ -8,10 +8,9 @@
 # ------------------------------------------------------------------------------------------------------------------- #
 import re
 import glob
-import math
 import ephem
 import easygui
-import datetime
+import numpy as np
 from astropy.io import fits
 from astropy.coordinates import Angle
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -33,18 +32,19 @@ OBS_TIMEZONE = +5.5
 # ------------------------------------------------------------------------------------------------------------------- #
 RA_keyword = 'RA'
 DEC_keyword = 'DEC'
-date_keyword = 'DATE-OBS'
-object_keyword = 'OBJECT'
-airmass_keyword = 'AIRMASS'
-time_start_keyword = 'TM_START'
+UT_keyword = 'UT'
+DATE_keyword = 'DATE_OBS'
+OBJECT_keyword = 'OBJECT'
+EXPTIME_keyword = 'EXPTIME'
+AIRMASS_keyword = 'AIRMASS'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Object Details
 # ------------------------------------------------------------------------------------------------------------------- #
-RA_object = '21:57:59.9'
-DEC_object = '+24:16:08.1'
+OBJECT_RA = '21:57:59.9'
+OBJECT_DEC = '+24:16:08.1'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -99,14 +99,14 @@ def add_radec(file_name):
     Returns:
         None
     """
-    global RA_object, DEC_object
+    global OBJECT_RA, OBJECT_DEC
 
     file_header = fits.getheader(filename=str(file_name))
-    date_obs = file_header[str(date_keyword)]
+    date_obs = file_header[str(DATE_keyword)]
 
     file_header.set('DATE_OBS', str(date_obs))
-    file_header.set(str(RA_keyword), RA_object)
-    file_header.set(str(DEC_keyword), DEC_object)
+    file_header.set(str(RA_keyword), OBJECT_RA)
+    file_header.set(str(DEC_keyword), OBJECT_DEC)
 
 
 def calculate_airmass(file_name):
@@ -119,20 +119,20 @@ def calculate_airmass(file_name):
     """
     hdulist = fits.open(file_name, mode='update')
     file_header = hdulist[0].header
-    date_obs = file_header[str(date_keyword)]
-    time_start = file_header[str(time_start_keyword)]
 
     if str(RA_keyword) in file_header.keys():
         object_ra = file_header[str(RA_keyword)]
     else:
-        object_ra = RA_object
+        object_ra = OBJECT_RA
 
     if str(DEC_keyword) in file_header.keys():
         object_dec = file_header[str(DEC_keyword)]
     else:
-        object_dec = DEC_object
+        object_dec = OBJECT_DEC
 
-    time_utc = str(datetime.timedelta(seconds=int(time_start)))
+    date_obs = file_header[str(DATE_keyword)]
+    time_utc = file_header[str(UT_keyword)]
+
     datetime_utc = str(date_obs) + ' ' + str(time_utc)
     julian_day = ephem.julian_date(datetime_utc)
 
@@ -143,32 +143,31 @@ def calculate_airmass(file_name):
     telescope.pressure = 0
     telescope.epoch = ephem.J2000
     telescope.date = datetime_utc
-
-    obj_pos = ephem.FixedBody()
-    obj_pos._ra = object_ra
-    obj_pos._dec = object_dec
-    obj_pos._epoch = ephem.J2000
-    obj_pos.compute(telescope)
-
     time_sidereal = telescope.sidereal_time()
-    object_alt = Angle(str(obj_pos.alt) + ' degrees').degree
-    airmass = 1 / math.cos(math.radians(90 - object_alt))
 
-    list_keywords = ['OBSERVAT', 'OBS_LAT', 'OBS_LONG', 'OBS_ALT', 'TIMEZONE', 'DATE_OBS', 'UT', 'JD', 'ST', 'RA',
-                     'DEC', 'ALT', 'AZ', 'AIRMASS']
+    object_pos = ephem.FixedBody()
+    object_pos._ra = object_ra
+    object_pos._dec = object_dec
+    object_pos._epoch = ephem.J2000
+    object_pos.compute(telescope)
 
-    dict_header = {'OBSERVAT': str(OBS_NAME), 'OBS_LAT': str(OBS_LAT), 'OBS_LONG': str(OBS_LONG),
-                   'OBS_ALT': str(OBS_ALT), 'TIMEZONE': str(OBS_TIMEZONE), 'DATE_OBS': str(date_obs),
-                   'UT': str(time_utc), 'JD': str(julian_day), 'ST': str(time_sidereal), 'RA': str(object_ra),
-                   'DEC': str(object_dec), 'ALT': str(obj_pos.alt), 'AZ': str(obj_pos.az), 'AIRMASS': str(airmass)}
+    object_alt = Angle(str(object_pos.alt) + ' degrees').degree
+    airmass = 1 / np.cos(np.radians(90 - object_alt))
+    list_keywords = ['LAT', 'LONG', 'ALT', 'TIMEZONE', RA_keyword, DEC_keyword, UT_keyword,
+                     DATE_keyword, 'JD', 'ST', 'ELE', 'AZ', 'AIRMASS']
+    dict_header = {'LAT': str(OBS_LAT), 'LONG': str(OBS_LONG), 'ALT': str(OBS_ALT), 'TIMEZONE': str(OBS_TIMEZONE),
+                   RA_keyword: str(object_ra), DEC_keyword: str(object_dec), DATE_keyword: str(date_obs),
+                   UT_keyword: str(time_utc), 'JD': str(julian_day), 'ST': str(time_sidereal),
+                   'ELE': str(object_pos.alt), 'AZ': str(object_pos.az), 'AIRMASS': str(airmass)}
 
     for keyword in list_keywords:
         if keyword in file_header.keys():
-            file_header.remove(str(keyword), remove_all=True)
+            file_header.remove(keyword, ignore_missing=True, remove_all=True)
         file_header.append(card=(keyword, dict_header[keyword]))
 
     hdulist.flush()
     hdulist.close()
+
 
 # ------------------------------------------------------------------------------------------------------------------- #
 

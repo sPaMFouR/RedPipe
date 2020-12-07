@@ -119,7 +119,7 @@ def text_list_to_python_list(text_list):
             python_list = f.read().split()
             return python_list
     else:
-        print ("ERROR: File '{0}' Not Found".format(text_list))
+        print("ERROR: File '{0}' Not Found".format(text_list))
         sys.exit(1)
 
 
@@ -131,9 +131,9 @@ def display_text(text_to_display):
     Returns:
         None
     """
-    print ("\n" + "# " + "-" * (12 + len(text_to_display)) + " #")
-    print ("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
-    print ("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
+    print("\n" + "# " + "-" * (12 + len(text_to_display)) + " #")
+    print("# " + "-" * 5 + " " + str(text_to_display) + " " + "-" * 5 + " #")
+    print("# " + "-" * (12 + len(text_to_display)) + " #" + "\n")
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -306,7 +306,7 @@ def translation(template_array, sub_array, scale_exponent=0.4):
     mod_array = np.empty_like(sub_array)
     shift(sub_array, list_shift, output=mod_array, mode='nearest')
 
-    print ("Translation In X & Y = {0}".format(list_shift))
+    print("Translation In X & Y = {0}".format(list_shift))
 
     return mod_array
 
@@ -330,7 +330,7 @@ def similarity(template_array, sub_array, scale_exponent=0.4):
     dict_rot = ird.similarity(template_arrayslice, sub_arrayslice, numiter=3, order=2, constraints=dict_constraint)
     mod_array = ird.transform_img(sub_array, scale=1.0, angle=dict_rot['angle'], tvec=dict_rot['tvec'], mode='nearest')
 
-    print ("Rotation = {0}, Translation = {1}".format(dict_rot['angle'], dict_rot['tvec']))
+    print("Rotation = {0}, Translation = {1}".format(dict_rot['angle'], dict_rot['tvec']))
 
     return mod_array
 
@@ -407,7 +407,7 @@ def align_imgproc(textlist_images, scale_exponent=0.5, prefix_str='a'):
 
             write_fits(image, mod_array, prefix_str)
     else:
-        print ("ERROR: Too Few Images To Align")
+        print("ERROR: Too Few Images To Align")
 
     display_text("Alignment Using Image Registration Completed")
 
@@ -434,7 +434,7 @@ def align_iraf(textlist_images, log_imexam, ref_coords, align_coords, align_db, 
 
     if len(list_images) > 0 and len(text_list_to_python_list(ref_coords)) != 0:
         for image in list_images:
-            print ("File Name: {0}: ".format(image))
+            print("File Name: {0}: ".format(image))
             output_filename = prefix_str + image
             list_temp = []
             for value in range(0, int(itern)):
@@ -460,11 +460,11 @@ def align_iraf(textlist_images, log_imexam, ref_coords, align_coords, align_db, 
                 remove_file(temp_image)
 
     elif len(list_images) > 0 and len(text_list_to_python_list(ref_coords)) == 0:
-        print ("ERROR: Reference Coordinates Not Specified In The File {0}".format(ref_coords))
+        print("ERROR: Reference Coordinates Not Specified In The File {0}".format(ref_coords))
         sys.exit(1)
 
     else:
-        print ("ERROR: Too Few Images To Align")
+        print("ERROR: Too Few Images To Align")
         sys.exit(1)
 
     display_text("Alignment Using GEOMAP & GEOTRAN Completed")
@@ -491,7 +491,7 @@ def check_aligned(textlist_images, log_align, ref_coords='stars.coo', log_imexam
 
     remove_file(log_imexam)
     for image in list_images:
-        print ("File Name: {0}: ".format(image))
+        print("File Name: {0}: ".format(image))
         imexam_coords(image, ref_coords, log_imexam)
 
     data_sub = pd.read_csv(log_imexam, sep='\s+', comment='#', header=None)

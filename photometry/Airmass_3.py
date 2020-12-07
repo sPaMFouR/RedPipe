@@ -8,10 +8,9 @@
 # ------------------------------------------------------------------------------------------------------------------- #
 import re
 import glob
-import math
 import ephem
 import easygui
-import datetime
+import numpy as np
 from astropy.io import fits
 from astropy.coordinates import Angle
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -36,8 +35,6 @@ DEC_keyword = 'DEC'
 UT_keyword = 'UT'
 DATE_keyword = 'DATE-OBS'
 DATEAVG_keyword = 'DATE-OBS'
-OBJECT_keyword = 'OBJECT'
-EXPTIME_keyword = 'EXPTIME'
 AIRMASS_keyword = 'AIRMASS'
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -154,7 +151,7 @@ def calculate_airmass(file_name):
     object_pos.compute(telescope)
 
     object_alt = Angle(str(object_pos.alt) + ' degrees').degree
-    airmass = 1 / math.cos(math.radians(90 - object_alt))
+    airmass = 1 / np.cos(np.radians(90 - object_alt))
     list_keywords = ['LAT', 'LONG', 'ALT', 'TIMEZONE', RA_keyword, DEC_keyword, UT_keyword,
                      DATE_keyword, 'JD', 'ST', 'ELE', 'AZ', 'AIRMASS']
     dict_header = {'LAT': str(OBS_LAT), 'LONG': str(OBS_LONG), 'ALT': str(OBS_ALT), 'TIMEZONE': str(OBS_TIMEZONE),
@@ -164,12 +161,11 @@ def calculate_airmass(file_name):
 
     for keyword in list_keywords:
         if keyword in file_header.keys():
-            file_header.remove(keyword, remove_all=True)
+            file_header.remove(keyword, ignore_missing=True, remove_all=True)
         file_header.append(card=(keyword, dict_header[keyword]))
 
     hdulist.flush()
     hdulist.close()
-
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
