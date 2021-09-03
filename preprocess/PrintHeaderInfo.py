@@ -75,7 +75,7 @@ def create_dir(dir_path):
         os.mkdir(dir_path)
     else:
         remove_similar_files(os.path.join(dir_path, '*'))
-    
+
 
 def copy_files(list_files, dir_source, prefix='raw_'):
     """
@@ -168,7 +168,6 @@ def format_header(list_files, ccdname):
     for filename in list_files:
         with fits.open(filename, mode='update') as hdulist:
             header = hdulist[0].header
-            header['ORIGFILE'] = filename
 
             if ccdname == 'HFOSC2':
                 header[DATE_keyword] = format_dateobs(header['DATE-AVG'])
@@ -182,8 +181,8 @@ def format_header(list_files, ccdname):
 def fix_header(list_files, dir_source, extnheader=0, extndata=1, prefix='fix_'):
     """
     FIX multi-extension headers of FITS files specified by the list 'list_files' as in the case of 'HFOSC2'.
-    The extension of the header and the data is specified by the keywords 'extnheader' and 'extndata'. The new file
-    will have the prefix 'prefix' appended and copied to the directory 'dir_source'.
+    The extension of the header and the data is specified by the keywords 'extnheader' and 'extndata'.
+    The new file will have the prefix 'prefix' appended and copied to the directory 'dir_source'.
     Args:
         list_files : List of FITS files whose header details have to be read
         dir_source : Path of the source directory where the files have to be copied
@@ -235,7 +234,7 @@ def read_headerinfo(list_files, outfile, extn=0):
 
     print (" ")
     print (tab_header)
-    display_text("Hurray: Header Info Sucessfully Printed..")
+    display_text("Hurray: Header Info Sucessfully Printed.")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -246,9 +245,13 @@ def read_headerinfo(list_files, outfile, extn=0):
 
 def main():
     """
-    Step 1: GUI Code
-    Step 2: Group FITS files and print the Header Info
+    Step 1: GUI Code for User Input
+    Step 2: Group FITS Files whose header are to be read
+    Step 3: Create a Directory where Pre-Processed Data will be saved
+    Step 4: Perform Fixing of File Header Data Unit (Only for HFOSC2)
+    Step 5: Print Header Info of the files in the directory
     """
+    # GUI Code for User Input
     DIR_FILES = eg.enterbox('Enter the directory from which header of files are to be read:',
                             title='Enter the Directory Path', default=[os.getcwd()])
 
@@ -260,10 +263,6 @@ def main():
 
     output_file = eg.enterbox('Enter the name of the output file containing the header info:',
                               title='Enter the Name of the Output File', default=['HeaderInfo.dat'])
-
-    # dir_files = os.getcwd()
-    # common_text = '*.fits'
-    # output_file = 'HeaderInfo.dat'
 
     # Group FITS Files whose header are to be read
     list_files = group_similar_files('', common_text=os.path.join(DIR_FILES, common_text))
@@ -285,8 +284,9 @@ def main():
         list_files = group_similar_files('', common_text=os.path.join(DIR_SAVE, 'raw_*' + common_text))
         pass
 
-    # Print Header Info of the list of files onto the 'output_file'
+    # Print Header Info of the files in the directory
     read_headerinfo(list_files, outfile=os.path.join(DIR_FILES, output_file), extn=0)
+    display_text("Important: Read Instructions in 'RenameInfo.dat' before formatting 'HeaderInfo.dat'.")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
