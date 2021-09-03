@@ -7,11 +7,6 @@ RedPipe is a collection of python scripts to aid with Optical Photometric and Sp
 
 The scripts are still under development.
 
-Authors
--------
-
-* **Avinash Singh** (IIA, Bengaluru)
-
 Requirements
 -------
 
