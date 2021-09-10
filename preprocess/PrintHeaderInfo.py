@@ -156,12 +156,12 @@ def format_dateobs(dateobs):
     return datenew
 
 
-def format_header(list_files, ccdname):
+def format_header(list_files, instrument):
     """
     Formats and homogenizes the header of the files in the list 'list_files'.
     Args:
         list_files : List of FITS files whose header details have to be formatted
-        ccdname    : Name of the Instrument from which the data was observed
+        instrument : Name of the Instrument from which the data was observed
     Returns:
         None
     """
@@ -169,7 +169,7 @@ def format_header(list_files, ccdname):
         with fits.open(filename, mode='update') as hdulist:
             header = hdulist[0].header
 
-            if ccdname == 'HFOSC2':
+            if instrument == 'HFOSC2':
                 header[DATE_keyword] = format_dateobs(header['DATE-AVG'])
             elif DATE_keyword in header.keys():
                 header[DATE_keyword] = format_dateobs(header[DATE_keyword])
@@ -258,8 +258,8 @@ def main():
     common_text = eg.enterbox('Enter the common text of Files to be read:',
                               title='Enter the Common Text', default=['*.fits'])
 
-    ccdname = eg.enterbox('Enter the CCD from which the data was observed:',
-                          title='Enter the Short Name of the CCD', default=['HFOSC2'])
+    instrument = eg.enterbox('Enter the Instrument from which the data was observed:',
+                                 title='Enter the Short Name of the Instrument', default=['HFOSC2'])
 
     output_file = eg.enterbox('Enter the name of the output file containing the header info:',
                               title='Enter the Name of the Output File', default=['HeaderInfo.dat'])
@@ -276,10 +276,10 @@ def main():
     copy_files(list_files, DIR_SAVE, prefix='raw_')
 
     # Perform Fixing of File Header Data Unit (Only for HFOSC2)
-    if ccdname == 'HFOSC2':
+    if instrument == 'HFOSC2':
         fix_header(list_files, DIR_SAVE, extnheader=0, extndata=1, prefix='fix_')
         list_files = group_similar_files('', common_text=os.path.join(DIR_SAVE, 'fix_*' + common_text))
-        format_header(list_files, ccdname)
+        format_header(list_files, instrument)
     else:
         list_files = group_similar_files('', common_text=os.path.join(DIR_SAVE, 'raw_*' + common_text))
         pass
