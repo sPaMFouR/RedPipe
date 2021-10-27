@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
-# xxxxxxxxxxxxxxxxxxxxxxx-------------------------CALCULATION OF AIRMASS----------------------xxxxxxxxxxxxxxxxxxxxxxx #
+# xxxxxxxxxxxxxxxxxxxxxxx---------------UPDATES AND APPENDS HEADER INFORMATION----------------xxxxxxxxxxxxxxxxxxxxxxx #
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -218,7 +218,9 @@ def append_details(filename, telescopename, telescope_df, extn=0):
 def main():
     """
     Step 1: GUI Code for User Input
-    Step 2: Group FITS files and print the Header Info
+    Step 2: Group FITS Files whose header are to be Updated + Read Input File
+    Step 3: Extract the details from 'file_telescopes' in a Pandas DataFrame
+    Step 4: Updates the Header with changes in 'HeaderInfo.dat' & Appends AIRMASS etc. Details to the Header
     """
     # GUI Code for User Input
     DIR_FILES = eg.enterbox('Enter the directory in which headers of files have to be updated:',
@@ -242,10 +244,10 @@ def main():
     header_df = pd.read_csv(input_file, sep='\s*[|]\s*', comment='#', dtype='string', engine='python')
     header_df = header_df.set_index('FILENAME')
 
-    # Initialises the Telescope Object using Ephem after Extracting Details from 'file_telescopes'
+    # Extract the details from 'file_telescopes' in a Pandas DataFrame
     telescope_df = pd.read_csv(file_telescopes, sep='\s+', comment='#').set_index('ShortName')
 
-    # Calculates AIRMASS etc. & Appends Respective Details In The Header
+    # Updates the Header with changes in 'HeaderInfo.dat' & Appends AIRMASS etc. Details to the Header
     for filename in list_files:
         update_header(filename, header_df)
         if identify_imagetype(filename):
