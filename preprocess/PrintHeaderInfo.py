@@ -252,8 +252,8 @@ def main():
     Step 5: Print Header Info of the files in the directory
     """
     # GUI Code for User Input
-    DIR_FILES = eg.enterbox('Enter the directory from which header of files are to be read:',
-                            title='Enter the Directory Path', default=[os.getcwd()])
+    DIR_FILES = eg.diropenbox('Enter the directory from which header of files are to be read:',
+                              title='Enter the Directory Path', default=[os.getcwd()])
 
     common_text = eg.enterbox('Enter the common text of Files to be read:',
                               title='Enter the Common Text', default=['*.fits'])
