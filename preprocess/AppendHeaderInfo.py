@@ -223,8 +223,8 @@ def main():
     Step 4: Updates the Header with changes in 'HeaderInfo.dat' & Appends AIRMASS etc. Details to the Header
     """
     # GUI Code for User Input
-    DIR_FILES = eg.enterbox('Enter the directory in which headers of files have to be updated:',
-                            title='Enter the Directory Path', default=[os.path.join(os.getcwd(), 'preprocessed')])
+    DIR_FILES = eg.diropenbox('Enter the directory in which headers of files have to be updated:',
+                              title='Enter the Directory Path', default=[os.path.join(os.getcwd(), 'preprocessed')])
     
     telescopename = eg.enterbox('Enter the Name of the Telescope from which the data was observed:',
                                 title='Enter the Name of the Telescope', default=['HCT'])
