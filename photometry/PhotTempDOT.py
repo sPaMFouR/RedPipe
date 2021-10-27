@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
 # xxxxxxxxxxxxxxxxxxxxxxxx-------------------PHOTOMETRY OF OBJECT FRAMES-----------------xxxxxxxxxxxxxxxxxxxxxxxxxxxx #
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #
@@ -32,18 +31,12 @@ OBS_TIMEZONE = +5.5
 # ------------------------------------------------------------------------------------------------------------------- #
 # Telescope CCD Specifications
 # ------------------------------------------------------------------------------------------------------------------- #
-read_noise = 4.87
-ccd_gain = 1.22
-data_max = 55000
-OBJECT_NAME = '2016gfy'
+read_noise = 10
+ccd_gain = 5
+data_max = 65000
+OBJECT_NAME = 'GRB171205A'
 # ------------------------------------------------------------------------------------------------------------------- #
 
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Extinction Coefficients (In Magnitudes) For Hanle In Different Photometric  Bands
-# ------------------------------------------------------------------------------------------------------------------- #
-eeta = {'7BesU': 0.36, '6BesB': 0.21, '5BesV': 0.12, '4BesR': 0.09, '3BesI': 0.05}
-eeta_err = {'7BesU': 0.07, '6BesB': 0.04, '5BesV': 0.04, '4BesR': 0.04, '3BesI': 0.03}
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -690,9 +683,10 @@ list_dates = set(list_mdates)
 # Groups MAG Files From A Date Into A File 'list_date_mag1', Applies TXDUMP Task To Obtain 'output_date_mag1'
 # Also Computes Tabular Magnitude Files From IRAF MAG Files Generated Through Photometry
 # ------------------------------------------------------------------------------------------------------------------- #
-for date in list_dates:
-    txdump(common_text='ts_*' + date + '*.mag.1', output_file='output_' + date + '_mag1')
-    tabular_mag(input_file='output_' + date + '_mag1', output_file='OUTPUT_tabulartemp_' + date)
+for magfile in list_mag:
+    identifier = magfile.split('_')[2] + '-' + magfile.split('-')[-1].split('.')[0]
+    txdump(magfile, output_file='output_' + identifier + '_mag' + str(mag_suffix))
+    tabular_mag('output_' + identifier + '_mag' + str(mag_suffix), output_file='OUTPUT_tabular_' + identifier)
 
 display_text("Tabular Magnitudes Have Been Computed For MAG Files")
 # ------------------------------------------------------------------------------------------------------------------- #
