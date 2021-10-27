@@ -11,8 +11,7 @@ import re
 import glob
 import math
 import ephem
-import easygui
-import datetime
+import shutil
 import pandas as pd
 import easygui as eg
 from astropy.io import fits
@@ -24,7 +23,7 @@ from astropy.coordinates import Angle
 # Files to Be Read
 # ------------------------------------------------------------------------------------------------------------------- #
 file_telescopes = 'TelescopeList.dat'
-file_headers = 'HeaderInfo.dat'
+file_headerinfo = 'HeaderInfo.dat'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -33,6 +32,8 @@ file_headers = 'HeaderInfo.dat'
 # ------------------------------------------------------------------------------------------------------------------- #
 OBJECT_keyword = 'OBJECT'
 DATE_keyword = 'DATE-OBS'
+FILTER_keyword = 'FILTER'
+GRISM_keyword = 'GRISM'
 RA_keyword = 'RA'
 DEC_keyword = 'DEC'
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -133,6 +134,41 @@ def identify_imagetype(filename):
             return True
 
 
+def file_rename(filepath, header_df):
+    """
+    Rename the file according to the format 'date_object-filter/grism' with the details 'filepath' with the updated header
+    information in Pandas DataFrame 'header_df'.
+    Args:
+        filepath   : Path to the FITS file whose header details have to be updated
+        header_df  : Pandas DataFrame containing updated header of files
+    Returns:
+        None
+    """
+    dirname, filename = os.path.split(filepath)
+
+    if filename in header_df.index:
+        file_data = header_df.loc[filename]
+        date = file_data[DATE_keyword].split('T')[0]
+        objname = file_data[OBJECT_keyword]
+        bandpass = file_data[FILTER_keyword]
+        grism = file_data[GRISM_keyword]
+
+        if bandpass != 'Free':
+            name_prefix = os.path.join(dirname, date + '_' + objname + '-' + bandpass)
+        elif grism != 'Free':
+            name_prefix = os.path.join(dirname, date + '_' + objname + '-' + bandpass)
+        else:
+            display_text("ERROR: Both 'Filter' and 'Grism' Keywords are 'Free'")
+        
+        count = len(glob.glob(name_prefix + '*.fits'))
+        new_filename = name_prefix + str(count + 1) + '.fits'
+
+        if os.path.exists(new_filename):
+            os.remove(new_filename)
+        shutil.copy(filepath, new_filename)
+    else:
+        pass
+
 def update_header(filepath, header_df):
     """
     Update the header details of the file indicated by path 'filepath' with the updated header
@@ -146,14 +182,14 @@ def update_header(filepath, header_df):
     filename = filepath.split('/')[-1]
     if filename in header_df.index:
         with fits.open(filepath, mode='update') as hdulist:
-            header = hdulist[0].header
+            file_header = hdulist[0].header
             columns = header_df.columns
             for column in columns:
                 val = header_df.loc[header_df.index == filename, column].values[0]
-                if column.upper() in header.keys():
-                    header.set(column.upper(), str(val).upper(), '')
+                if column.upper() in file_header.keys():
+                    file_header.set(column.upper(), str(val).upper(), '')
     else:
-        display_text("ERROR: File '{0}' is not logged in '{1}'".format(filepath, file_headers))
+        display_text("ERROR: File '{0}' is not logged in '{1}'".format(filepath, file_headerinfo))
         display_text("ERROR: Run 'PrintHeaderInfo.py' before running this script")
         pass
 
@@ -181,7 +217,7 @@ def append_details(filename, telescopename, telescope_df, extn=0):
     with fits.open(filename, mode='update') as hdulist:
         file_header = hdulist[extn].header
 
-        date_avg = file_header[str(DATE_keyword)]
+        date_avg = file_header[DATE_keyword]
         date_obs, time_utc = date_avg.split('T')
         datetime_utc = str(date_obs) + ' ' + str(time_utc)
         julian_day = round(ephem.julian_date(datetime_utc), 3)
@@ -224,16 +260,16 @@ def main():
     """
     # GUI Code for User Input
     DIR_FILES = eg.diropenbox('Enter the directory in which headers of files have to be updated:',
-                              title='Enter the Directory Path', default=[os.path.join(os.getcwd(), 'preprocessed')])
+                              title='Path to the Directory', default=[os.path.join(os.getcwd(), 'preprocessed')])
     
     telescopename = eg.enterbox('Enter the Name of the Telescope from which the data was observed:',
-                                title='Enter the Name of the Telescope', default=['HCT'])
+                                title='Name of the Telescope', default=['HCT'])
 
     instrument = eg.enterbox('Enter the Instrument from which the data was observed:',
-                                 title='Enter the Short Name of the Instrument', default=['HFOSC2'])
+                                 title='Short Name of the Instrument', default=['HFOSC2'])
 
     input_file = eg.enterbox('Enter the name of the output file containing the header info:',
-                             title='Enter the Name of the Output File', default=['HeaderInfo.dat'])
+                             title='Path of the Input File', default=[os.path.join(os.getcwd(), file_headerinfo)])
 
     # Group FITS Files whose header are to be Updated + Read Input File
     if instrument == 'HFOSC2':
@@ -252,6 +288,7 @@ def main():
         update_header(filename, header_df)
         if identify_imagetype(filename):
             append_details(filename, telescopename, telescope_df)
+        file_rename(filename, header_df)
 # ------------------------------------------------------------------------------------------------------------------- #
 
 

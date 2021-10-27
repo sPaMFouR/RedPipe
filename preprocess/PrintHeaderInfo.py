@@ -253,16 +253,16 @@ def main():
     """
     # GUI Code for User Input
     DIR_FILES = eg.diropenbox('Enter the directory from which header of files are to be read:',
-                              title='Enter the Directory Path', default=[os.getcwd()])
+                              title='Path to the Directory', default=[os.getcwd()])
 
     common_text = eg.enterbox('Enter the common text of Files to be read:',
-                              title='Enter the Common Text', default=['*.fits'])
+                              title='Common Text of Files', default=['*.fits'])
 
     instrument = eg.enterbox('Enter the Instrument from which the data was observed:',
-                                 title='Enter the Short Name of the Instrument', default=['HFOSC2'])
+                                 title='Short Name of the Instrument', default=['HFOSC2'])
 
     output_file = eg.enterbox('Enter the name of the output file containing the header info:',
-                              title='Enter the Name of the Output File', default=['HeaderInfo.dat'])
+                              title='Name of the Output File', default=['HeaderInfo.dat'])
 
     # Group FITS Files whose header are to be read
     list_files = group_similar_files('', common_text=os.path.join(DIR_FILES, common_text))
