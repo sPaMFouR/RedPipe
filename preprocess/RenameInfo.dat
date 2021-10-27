@@ -1,0 +1,19 @@
+Important Points to Keep in Mind while editing 'HeaderInfo.dat'
+1) OBJECT Keyword:
+    a) Bias Frames                      - BIAS
+    b) Flat Frames                      - FLAT
+    c) Spectroscopic Bias Frames        - BIASSPEC
+    d) Lamp Spectra                     - FeAr,FeNe etc.
+    e) Spectroscopic Standard           - Feige110, Feige66 etc. 
+    f) Object Frames                    - <Object> or <OBJECT> (Avoid using <object>)
+
+2) FILTER Keyword:
+    a) Bessell Filters                  - U, B, V, R, I
+    b) SDSS Filters                     - u, g, r, i, z
+    c) No Filter                        - Free
+
+3) GRISM Keyword:
+    a) Grism 7                          - Gr7
+    b) Grism 8                          - Gr8
+    c) No Grism                         - Free
+    d) Others                           - Gr<Grating Number>
