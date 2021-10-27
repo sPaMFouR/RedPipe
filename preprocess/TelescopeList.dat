@@ -1,0 +1,6 @@
+# List of Telescopes
+ShortName                 Name                          Longitude   Latitude    Altitude  TimeZone  Horizon  Zenith
+   HCT      Indian_Astronomical_Observatory[Hanle]      78:57:51    32:46:46      4486      5.5       25      85
+   ST       Sampurnanand_Telescope[Nainital]            79:27:00    29:22:00      1951      5.5       25      85
+   DOT      Devasthal_Optical_Telescope[Devasthal]      79:41:04    29:21:40      2450      5.5       15      87.5
+  DFOT      Devasthal_Fast_Optical_Telescope[Devasthal] 79:41:04    29:21:40      2450      5.5       30      85
