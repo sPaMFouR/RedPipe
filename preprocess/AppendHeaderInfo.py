@@ -273,10 +273,15 @@ def main():
 
     # Group FITS Files whose header are to be Updated + Read Input File
     if instrument == 'HFOSC2':
-        ctext = 'fix*.fits'
+        prefix = 'fix'
     else:
-        ctext = 'raw*.fits'
-    list_files = group_similar_files('', common_text=os.path.join(DIR_FILES, ctext))
+        prefix = 'raw'
+
+    list_files = group_similar_files('', common_text=os.path.join(DIR_FILES, prefix + '*.fits'))
+    list_remove = group_similar_files('', common_text=os.path.join(DIR_FILES, '*.fits'), exceptions=prefix)
+    for filename in list_remove:
+        os.remove(filename)
+
     header_df = pd.read_csv(input_file, sep='\s*[|]\s*', comment='#', dtype='string', engine='python')
     header_df = header_df.set_index('FILENAME')
 
