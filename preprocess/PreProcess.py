@@ -10,6 +10,7 @@ import os
 import re
 import glob
 import numpy as np
+import pandas as pd
 import easygui as eg
 import ccdproc as ccdp
 from astropy import units as u
@@ -20,16 +21,22 @@ from astropy.nddata.blocks import block_replicate
 # ------------------------------------------------------------------------------------------------------------------- #
 
 # ------------------------------------------------------------------------------------------------------------------- #
+# Files to Be Read
+# ------------------------------------------------------------------------------------------------------------------- #
+file_telescopes = 'TelescopeList.dat'
+# ------------------------------------------------------------------------------------------------------------------- #
+
+# ------------------------------------------------------------------------------------------------------------------- #
 # GLOBAL VARIABLES
 # ------------------------------------------------------------------------------------------------------------------- #s
-READ_NOISE = 4.87  # Units in electrons/photon
+READ_NOISE = 4.87  # Units in electrons / ADU
 GAIN = 1.22 * u.electron / u.adu
-SATURATION = 800000 # Units in electrons/photon
+SATURATION = 800000 # Units in electrons / ADU
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Function For File Handling
+# Functions For File Handling
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def group_similar_files(text_list, common_text, exceptions=''):
@@ -95,8 +102,8 @@ def bias_combine(textlist_bias, master_bias='mbias.fits'):
     """
     Combines bias files to make a master bias.
     Args:
-        textlist_bias - A python list object with paths/names to the individual files.
-        master_bias   - Output master bias file (default 'mbias.fits')
+        textlist_bias : A python list object with paths/names to the individual files.
+        master_bias   : Output master bias file (default 'mbias.fits')
     Returns:
         None
     """
@@ -117,9 +124,9 @@ def subtract_bias(textlist_files, master_bias='mbias.fits', prefix_str='bs_'):
     """
     Subtract bias from the given files list
     Args:
-        textlist_files - A python list object with paths/names to the individual files.
-        master_bias    - Master bias used for subtraction (default 'mbias.fits')
-        prefix_str     - String to be prefixed for subtracted files
+        textlist_files : A python list object with paths/names to the individual files.
+        master_bias    : Master bias used for subtraction (default 'mbias.fits')
+        prefix_str     : String to be prefixed for subtracted files
     Returns:
         None
     """
@@ -138,9 +145,9 @@ def flat_combine(textlist_files, band, outfile='mflat'):
     Combines multiple flats for a given input files list
 
     Args:
-        textlist_files - A python list object with paths/names to the individual files.
-        band           - Filter name associated with the flat files
-        outfile        - Master flat name (default outfile + band + '.fits')
+        textlist_files : A python list object with paths/names to the individual files.
+        band           : Filter name associated with the flat files
+        outfile        : Master flat name (default outfile + band + '.fits')
     Returns:
         None
     """
@@ -161,9 +168,9 @@ def flat_correction(textlist_files, master_flat, prefix_str='f'):
     """
     To flat field the science images using master flat
     Args:
-        textlist_files - A python list object with paths/names to the individual files.
-        master_flat    - Master flat used to flat field the science image
-        prefix_str     - String to be added to newly created sceince image
+        textlist_files : A python list object with paths/names to the individual files.
+        master_flat    : Master flat used to flat field the science image
+        prefix_str     : String to be added to newly created sceince image
     Returns:
         None
     """
@@ -182,8 +189,8 @@ def cosmic_ray_corr(textlist_files, prefix_str='c'):
     """
     Gain correction and Cosmic ray correction using LA Cosmic method.
     Args:
-        textlist_files - A python list object with paths/names to the individual files.
-        prefix_str     - String appended to the name of newly created file
+        textlist_files : A python list object with paths/names to the individual files.
+        prefix_str     : String appended to the name of newly created file
     Returns:
         None
     """
@@ -216,6 +223,9 @@ def main():
     DIR_FILES = eg.enterbox('Enter the directory in which preprocessing has to be performed:',
                             title='Enter the Directory Path', default=[os.path.join(os.getcwd(), 'preprocessed')])
     
+    common_text = eg.enterbox('Enter the common text of files for which Details are to be appended:',
+                              title='Enter the Common Text', default=['*.fits']) 
+    
     telescopename = eg.enterbox('Enter the Name of the Telescope from which the data was observed:',
                                 title='Enter the Name of the Telescope', default=['HCT'])
 
@@ -229,7 +239,7 @@ def main():
 
     # Extract the details from 'file_telescopes' in a Pandas DataFrame
     telescope_df = pd.read_csv(file_telescopes, sep='\s+', comment='#').set_index('ShortName')
-    list_files = group_similar_files('', common_text=os.path.join(DIR_FILES, prefix + '*.fits'))
+    list_files = group_similar_files('', common_text=os.path.join(DIR_FILES, common_text))
 
 
 
