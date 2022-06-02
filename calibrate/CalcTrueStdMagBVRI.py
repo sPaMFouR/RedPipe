@@ -512,7 +512,6 @@ def ubvrimag_to_colormagframe(input_df, err=False):
 
     output_df['V'] = input_df['V']
     output_df['B-V'] = add_series([input_df['B'], input_df['V']], sub=True, err=err)
-#    output_df['U-B'] = add_series([input_df['U'], input_df['B']], sub=True, err=err)
     output_df['V-R'] = add_series([input_df['V'], input_df['R']], sub=True, err=err)
     output_df['R-I'] = add_series([input_df['R'], input_df['I']], sub=True, err=err)
     output_df['V-I'] = add_series([input_df['V'], input_df['I']], sub=True, err=err)
@@ -534,7 +533,6 @@ def colormag_to_ubvriframe(input_df, err=False):
     """
     output_df = pd.DataFrame(index=input_df.index.values)
 
- #   output_df['U'] = add_series([input_df['V'], input_df['B-V'], input_df['U-B']], err=err)
     output_df['B'] = add_series([input_df['V'], input_df['B-V']], err=err)
     output_df['V'] = input_df['V']
     output_df['R'] = add_series([input_df['V'], input_df['V-R']], sub=True, err=err)
@@ -571,7 +569,6 @@ def calculate_stdmag(obs_df, alpha, beta, err=False):
     std_df = pd.DataFrame()
 
     std_df['B-V'] = comp_series(obs_df['B-V'], alpha[0], beta['Beta_0'], err=err)
- #   std_df['U-B'] = comp_series(obs_df['U-B'], alpha[1], beta['Beta_1'], err=err)
     std_df['V-R'] = comp_series(obs_df['V-R'], alpha[1], beta['Beta_1'], err=err)
     std_df['R-I'] = comp_series(obs_df['R-I'], alpha[2], beta['Beta_2'], err=err)
     std_df['V-I'] = comp_series(obs_df['V-I'], alpha[3], beta['Beta_3'], err=err)
@@ -602,7 +599,6 @@ def calculate_betaframe(obs_df, std_df, alpha, err=False):
     beta_df = pd.DataFrame()
 
     beta_df['Beta_0'] = add_series([std_df['B-V'], mul_series(obs_df['B-V'], alpha[0])], sub=True, err=err)
-  #  beta_df['Beta_1'] = add_series([std_df['U-B'], mul_series(obs_df['U-B'], alpha[1])], sub=True, err=err)
     beta_df['Beta_1'] = add_series([std_df['V-R'], mul_series(obs_df['V-R'], alpha[1])], sub=True, err=err)
     beta_df['Beta_2'] = add_series([std_df['R-I'], mul_series(obs_df['R-I'], alpha[2])], sub=True, err=err)
     beta_df['Beta_3'] = add_series([std_df['V-I'], mul_series(obs_df['V-I'], alpha[3])], sub=True, err=err)
@@ -656,8 +652,6 @@ def calculate_colormag(file_mag):
     data_df[['MAG_1', 'MAG_2', 'ERR_1', 'ERR_2']] = data_df[['MAG_1', 'MAG_2', 'ERR_1', 'ERR_2']].astype('float64')
     data_df = data_df.dropna(how='any')
     star_count = len(set(data_df.index.values))
-
-    print (data_df)
 
     data_df['FILTER'] = data_df['IFILTER'].apply(lambda x: str(x)[-1])
     data_df['APCOR'] = data_df['MAG_1'] - data_df['MAG_2']
