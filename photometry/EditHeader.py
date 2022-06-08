@@ -72,7 +72,6 @@ def group_similar_files(text_list, common_text, exceptions=''):
         for file_name in glob.glob(common_text):
             for text in list_exception:
                 test = re.search(str(text), file_name)
-                print(file_name)
                 if test:
                     try:
                         list_files.remove(file_name)
@@ -99,7 +98,6 @@ list_files = group_similar_files('', common_text='*.fits')
 for file_name in list_files:
     hdulist = fits.open(file_name, mode='update')
     file_header = hdulist[0].header
-    print file_name
     if str(RA_keyword) in file_header.keys():
         object_ra = file_header[str(RA_keyword)]
     else:
