@@ -94,7 +94,7 @@ def remove_similar_files(common_text):
 
 
 def group_similar_files(text_list, common_text, exceptions=''):
-    """s
+    """
     Groups similar files based on the string "common_text". Writes the similar files
     onto the list 'text_list' (only if this string is not empty) and appends the similar
     files to a list 'python_list'.
