@@ -21,9 +21,9 @@ from astropy.coordinates import Angle
 # ------------------------------------------------------------------------------------------------------------------- #
 # Observatory Site Details
 # ------------------------------------------------------------------------------------------------------------------- #
-OBS_LONG = '79:41:06'
-OBS_LAT = '29:21:42'
-OBS_ALT = 2450
+OBS_LONG = '79:41:04'
+OBS_LAT = '29:21:40'
+OBS_ALT = 2420
 OBS_TIMEZONE = +5.5
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -32,21 +32,24 @@ OBS_TIMEZONE = +5.5
 # Image Header Keywords
 # ------------------------------------------------------------------------------------------------------------------- #
 OBJECT_keyword = 'OBJECT'
-EXPTIME_keyword = 'EXPTIME'
-UT_keyword = 'UT'
+EXPTIME_keyword = 'EXPOSURE'
 RA_keyword = 'OBJRA'
 DEC_keyword = 'OBJDEC'
+DATEAVG_keyword = 'FRAME'
+
+UT_keyword = 'UT'
 DATE_keyword = 'DATE-OBS'
-DATEAVG_keyword = 'DATE-AVG'
+modRA_keyword = 'RA'
+modDEC_keyword = 'DEC'
+modEXPTIME_keyword = 'EXPTIME'
+
 BIASSEC_keyword = 'BIASSEC'
 CCDSEC_keyword = 'CCDSEC'
 TRIMSEC_keyword = 'TRIMSEC'
 
-modRA_keyword = 'RA'
-modDEC_keyword = 'DEC'
-
-OBJ_RA = '12:26:12.05'
-OBJ_DEC = '58:18:51.10'
+OBJ_NAME = 'M67'
+OBJ_RA = '08:51:21.21'
+OBJ_DEC = '11:48:02.4'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -131,21 +134,19 @@ for file_name in list_files:
 
     object_alt = Angle(str(object_pos.alt) + ' degrees').degree
     airmass = 1 / math.cos(math.radians(90 - object_alt))
-    list_keywords = ['LAT', 'LONG', 'ALT', 'TIMEZONE', modRA_keyword, modDEC_keyword, UT_keyword,
-                     DATE_keyword, 'JD', 'ST', 'ELE', 'AZ', 'AIRMASS']
-    dict_header = {'LAT': str(OBS_LAT), 'LONG': str(OBS_LONG), 'ALT': str(OBS_ALT), 'TIMEZONE': str(OBS_TIMEZONE),
-                   modRA_keyword: OBJ_RA, modDEC_keyword: OBJ_DEC, DATE_keyword: str(date_obs),
-                   UT_keyword: str(time_utc), 'JD': str(julian_day), 'ST': str(time_sidereal),
+    dict_header = {'OBJECT': OBJ_NAME, 'LAT': str(OBS_LAT), 'LONG': str(OBS_LONG), 'ALT': str(OBS_ALT), 'TIMEZONE': str(OBS_TIMEZONE),
+                   modRA_keyword: OBJ_RA, modDEC_keyword: OBJ_DEC, modEXPTIME_keyword: file_header[EXPTIME_keyword],
+                   DATE_keyword: str(date_obs), UT_keyword: str(time_utc), 'JD': str(julian_day), 'ST': str(time_sidereal),
                    'ELE': str(object_pos.alt), 'AZ': str(object_pos.az), 'AIRMASS': str(airmass)}
 
     if object_ra == '' or object_dec == '':
         list_keywords = list_keywords[:-3]
 
-    for keyword in [TRIMSEC_keyword, BIASSEC_keyword, CCDSEC_keyword]:
+    for keyword in [CCDSEC_keyword]:
         if keyword in file_header.keys():
             file_header.remove(keyword, remove_all=True)
 
-    for keyword in list_keywords:
+    for keyword in dict_header.keys():
         if keyword in file_header.keys():
             file_header.remove(keyword, remove_all=True)
         file_header.append(card=(keyword, dict_header[keyword]))
