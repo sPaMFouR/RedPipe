@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 import easygui as eg
 from pyraf import iraf
-import dateutil.parser as dparser
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -35,7 +34,6 @@ OBS_TIMEZONE = +5.5
 read_noise = 4.87
 ccd_gain = 1.22
 data_max = 55000
-OBJECT_NAME = '2016gfy'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -54,6 +52,13 @@ UT_keyword = 'UT'
 FILTER_keyword = 'FILTER'
 AIRMASS_keyword = 'AIRMASS'
 EXPTIME_keyword = 'EXPTIME'
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Object Details
+# ------------------------------------------------------------------------------------------------------------------- #
+OBJECT_NAME = '2022jli'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -329,7 +334,7 @@ def fitsky_pars(fwhm_value):
     task.unlearn()
 
     task.unlearn()
-    task.salgorithm = 'centroid'                    # Sky Fitting Algorithm
+    task.salgorithm = 'mode'                        # Sky Fitting Algorithm
     task.annulus = 5 * float(fwhm_value)            # Inner Radius Of Sky Annulus In Scale Units
     task.dannulus = 3                               # Width Of Sky Annulus In Scale Units
 
@@ -391,7 +396,6 @@ def txdump(common_text, output_file):
 
     file_temp = 'temp_dump'
     group_similar_files(file_temp, common_text=common_text)
-    remove_file(output_file)
     task(textfile='@' + file_temp, fields=fields, expr='yes', Stdout=output_file)
     remove_file(file_temp)
 
@@ -412,7 +416,7 @@ def read_column(file_name, col_index, title_rows=0):
     Returns:
         data_column : List of all the elements extracted from the column
     """
-    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows, engine='python')
+    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows)
     data_column = file_df.iloc[:, col_index].tolist()
 
     return data_column
@@ -427,7 +431,7 @@ def read_file(file_name, title_rows=0):
     Returns:
         data_file   : List of all columns extracted from the text file
     """
-    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows, engine='python')
+    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows)
     data_file = [file_df.iloc[:, index].tolist() for index in range(0, file_df.shape[1])]
 
     return data_file
@@ -445,7 +449,7 @@ def read_magfile(file_name, col_nos, fmt='{:>8}', title_rows=0):
     Returns:
         data_file   : List of all columns extracted from the text file
     """
-    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows, engine='python')
+    file_df = pd.read_csv(filepath_or_buffer=file_name, sep='\s+', header=None, skiprows=title_rows)
     rows, columns = file_df.shape
 
     if re.search(':', col_nos):
@@ -455,7 +459,7 @@ def read_magfile(file_name, col_nos, fmt='{:>8}', title_rows=0):
     else:
         print ("Invalid Format Of Entering Column Numbers")
         sys.exit(1)
-
+        
     data_file = [file_df.iloc[:, index].tolist() for index in col_indexes]
 
     for col_index in range(0, len(col_indexes)):
@@ -489,8 +493,8 @@ def calculate_fwhm(textlist_files, coord_file='stars.coo', log_imexam='log_imexa
         list_mean_fwhm  : Python list containing Mean FWHM of all the FITS files
     """
     imexam_fwhm(textlist_files, coord_file=coord_file, log_imexam=log_imexam)
-    coord_df = pd.read_csv(coord_file, sep="\s+", header=None, engine='python')
-    data_df = pd.read_csv(log_imexam, sep="\s+", comment="#", header=None, engine='python')
+    coord_df = pd.read_csv(coord_file, sep='\s+', header=None)
+    data_df = pd.read_csv(log_imexam, sep='\s+', comment="#", header=None)
     count = coord_df.shape[0]
     rows, columns = data_df.shape
     col_moff = columns - 2
@@ -524,9 +528,9 @@ def extract_val(aper_string, fwhm):
     else:
         list_aper = aper_string.split(',')
 
-    aper_values = ""
+    aper_values = ''
     for value in list_aper:
-        aper_values += str(float(value) * float(fwhm)) + ","
+        aper_values += str(float(value) * float(fwhm)) + ','
 
     return aper_values[:-1]
 
@@ -672,17 +676,8 @@ aper_phot(textlist_temp, textlist_fwhm, coord_sn, phot_radius=aperture_values, d
 # Groups Mag Files From PHOT Task Into A Separate List & Makes A List Of Dates On Which Observation Was Done
 # ------------------------------------------------------------------------------------------------------------------- #
 mag_suffix = 1
-list_mag = group_similar_files('', common_text='ts_*.mag.{0}'.format(mag_suffix))
-
-list_mdates = []
-for file_name in list_mag:
-    temp_name = file_name.split(OBJECT_NAME)[0]
-    date = dparser.parse(temp_name, fuzzy=True)
-    date = date.strftime('%Y-%m-%d')
-    list_mdates.append(date)
-list_dates = set(list_mdates)
-
-# list_dates = set([file_name[6:16] for file_name in list_mag])
+list_mag = group_similar_files('', common_text='ts_*.mag.1')
+list_dates = set([file_name[6:16] for file_name in list_mag])
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -696,3 +691,4 @@ for date in list_dates:
 
 display_text("Tabular Magnitudes Have Been Computed For MAG Files")
 # ------------------------------------------------------------------------------------------------------------------- #
+
