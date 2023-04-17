@@ -65,9 +65,9 @@ EXPTIME_keyword = 'EXPTIME'
 # ------------------------------------------------------------------------------------------------------------------- #
 # Object Details
 # ------------------------------------------------------------------------------------------------------------------- #
-OBJECT_NAME = '2017iro'
-OBJECT_RA = '14:06:23.11'
-OBJECT_DEC = '+50:43:20.2'
+OBJECT_NAME = '2022jli'
+OBJECT_RA = '00:34:45.690'
+OBJECT_DEC = '-08:23:12.16'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
@@ -193,7 +193,7 @@ def reject(list_values, iterations=2):
         list_reject : Output list after rejecting outliers from the input 'list_values'
     """
     list_reject = filter(lambda x: x != 'INDEF', list_values)
-    list_reject = map(float, list_reject)
+    list_reject = list(map(float, list_reject))
     list_reject.sort()
 
     for _ in range(0, iterations):

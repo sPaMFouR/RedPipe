@@ -369,7 +369,7 @@ def generate_align_file(ref_coords, log_file, align_file):
         None
     """
     list_refcoords = text_list_to_python_list(ref_coords)
-    no_of_stars = len(list_refcoords) / 2
+    no_of_stars = int(len(list_refcoords) / 2)
     list_xref = list_refcoords[::2]
     list_yref = list_refcoords[1::2]
 
@@ -490,7 +490,7 @@ def check_aligned(textlist_images, log_align, ref_coords='stars.coo', log_imexam
     list_images = text_list_to_python_list(textlist_images)
     list_refcoords = text_list_to_python_list(ref_coords)
 
-    no_of_stars = len(list_refcoords) / 2
+    no_of_stars = int(len(list_refcoords) / 2)
     list_xref = list_refcoords[::2]
     list_yref = list_refcoords[1::2]
 
