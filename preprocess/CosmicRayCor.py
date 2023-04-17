@@ -221,6 +221,10 @@ def crmedian(textlist_cosmic, prefix_str='c'):
     list_cosmic = text_list_to_python_list(textlist_cosmic)
 
     task = iraf.noao.imred.crutil.crmedian
+    task.crmask = ''
+    task.median = ''
+    task.sigma = ''
+    task.resid = ''
     task.unlearn()
 
     task.lsigma = 25                                            # Low Clipping Sigma Factor
@@ -276,7 +280,7 @@ def cosmicray_check(textlist_cosmic, prefix_str='cr_'):
     task.unlearn()
 
     for file_name in list_cosmic:
-        output_filename = prefix_str + file_name[3:]
+        output_filename = prefix_str + file_name
         remove_file(output_filename)
         task(operand1=file_name, op='-', operand2='c' + file_name, result=output_filename)
 
@@ -290,7 +294,7 @@ def cosmicray_check(textlist_cosmic, prefix_str='cr_'):
 # ctext = eg.enterbox(msg='Enter The Common Text Of Files On Which Cosmic Ray Correction Has To Be Done?',
 #                    title='Cosmic Ray Correction', default='a_*.fits')
 rmv_files = True
-ctext = 'a_*.fits'
+ctext = '*.fits'
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
