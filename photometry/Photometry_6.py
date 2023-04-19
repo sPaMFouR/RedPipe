@@ -511,7 +511,10 @@ def txdump(common_text, output_file):
 
     file_temp = 'temp_dump'
     group_similar_files(file_temp, common_text=common_text)
-    remove_file(output_file)
+
+    if os.path.exists(output_file):
+        remove_file(output_file)
+    
     task(textfile='@' + file_temp, fields=fields, expr='yes', Stdout=output_file)
     remove_file(file_temp)
 
@@ -791,11 +794,11 @@ def tabular_mag(input_file, output_file):
     star_count = max(map(int, star_id))
     columns = len(data_file)
     rows = len(data_file[0])
-    apertures = (columns - col_data) / 3
+    apertures = int((columns - col_data) / 3)
 
     list_col = []
     for index in range(0, 3):
-        list_col.append(str(col_data + index * apertures) + ':' + str(col_data + (index + 1) * apertures))
+        list_col.append(str(int(col_data + index * apertures)) + ':' + str(int(col_data + (index + 1) * apertures)))
 
     list_aper = zip_list(read_magfile(input_file, col_nos=list_col[0], fmt='{:8.2f}'))
     list_mag = zip_list(read_magfile(input_file, col_nos=list_col[1], fmt='{:10.4f}'))
