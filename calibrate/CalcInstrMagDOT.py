@@ -114,7 +114,7 @@ def reject(list_values, iterations=2):
         list_reject : Output list after rejecting outliers from the input 'list_values'
     """
     list_reject = filter(lambda x: x != np.nan, list_values)
-    list_reject = map(float, list_reject)
+    list_reject = list(map(float, list_reject))
     list_reject.sort()
 
     for _ in range(0, iterations):
@@ -193,7 +193,7 @@ def append_missing_data(input_df):
     Returns:
         output_df   : Pandas DataFrame containing appended columns for missing data
     """
-    star_id = set(input_df.index.values)
+    star_id = list(set(input_df.index.values))
 
     for band in filters:
         if band not in set(input_df['FILTER'].values):
