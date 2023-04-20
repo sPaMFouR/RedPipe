@@ -18,15 +18,6 @@ from pyraf import iraf
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Global Variables To Be Used In This Code
-# ------------------------------------------------------------------------------------------------------------------- #
-precision = 4
-day_std = '2022-05-20'
-object_name = '2022crv'
-# ------------------------------------------------------------------------------------------------------------------- #
-
-
-# ------------------------------------------------------------------------------------------------------------------- #
 # Site Extinction Coefficients With Errors In Different Bands
 # ------------------------------------------------------------------------------------------------------------------- #
 # FILTER  EXTINCTION_MEAN   EXTINCTION_ERROR
@@ -156,6 +147,16 @@ M67 = [[10.489, 0.576, 0.340, 0.327, 0.667, 0.013, 0.010, 0.017, 0.008, 0.013, 0
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
+# Global Variables To Be Used In This Code
+# ------------------------------------------------------------------------------------------------------------------- #
+precision = 4
+day_std = '2022-08-20'
+object_name = '2022jli'
+std_matrix = PG1633
+# ------------------------------------------------------------------------------------------------------------------- #
+
+
+# ------------------------------------------------------------------------------------------------------------------- #
 # Load Required IRAF Packages
 # ------------------------------------------------------------------------------------------------------------------- #
 iraf.noao(_doprint=0)
@@ -254,7 +255,7 @@ def reject(list_values, iterations=2):
         list_reject : Output list after rejecting outliers from the input 'list_values'
     """
     list_reject = filter(lambda x: x != 'INDEF', list_values)
-    list_reject = map(float, list_reject)
+    list_reject = list(map(float, list_reject))
     list_reject.sort()
 
     for _ in range(0, iterations):
@@ -284,7 +285,7 @@ def reject_series(input_series):
     input_series = input_series.sort_values(ascending=True)
 
     sigma = 1
-    output_series = pd.Series()
+    output_series = pd.Series(dtype='float64')
     while len(output_series.index) == 0:
         output_series = input_series[(input_series - input_series.median()).abs() < sigma * input_series.std()]
         sigma += 0.5
@@ -342,15 +343,19 @@ def txdump(common_text, output_file):
     task.unlearn()
 
     file_temp = 'temp_dump'
-    group_similar_files(str(file_temp), common_text=common_text)
-    task(textfile='@' + str(file_temp), fields=fields, expr='yes', Stdout=str(output_file))
+    group_similar_files(file_temp, common_text=common_text)
+
+    if os.path.exists(output_file):
+        remove_file(output_file)
+
+    task(textfile='@' + file_temp, fields=fields, expr='yes', Stdout=output_file)
     remove_file(file_temp)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Functions For Manipulating Pandas DataFrames
+# Functions For Manipulating Pandas Series & DataFrames
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def add_series(list_series, sub=False, err=False):
@@ -409,7 +414,7 @@ def append_missing_data(input_df):
     Returns:
         output_df   : Pandas DataFrame containing appended columns for missing data
     """
-    star_id = set(input_df.index.values)
+    star_id = list(set(input_df.index.values))
 
     for band in filters:
         if band not in set(input_df['FILTER'].values):
@@ -436,7 +441,7 @@ def unorgmag_to_ubvriframe(input_df):
             dict_stars[index] = {}
         dict_stars[index][row[0]] = row[1]
 
-    output_df = pd.DataFrame(data=dict_stars).T[filters]
+    output_df = pd.DataFrame(data=dict_stars, dtype='float64').T[filters]
     output_df = output_df.apply(pd.to_numeric, errors='coerce').round(int(precision))
     output_df = output_df.replace(np.nan, 'INDEF')
 
@@ -646,7 +651,7 @@ def calculate_colormag(file_mag):
         mag_df      : Pandas DataFrame containing broadband magnitudes
         err_df      : Pandas DataFrame containing errors in magnitudes
     """
-    data_df = pd.read_csv(filepath_or_buffer=file_mag, sep='\s+', names=list_magcol, index_col=0, engine='python')
+    data_df = pd.read_csv(filepath_or_buffer=file_mag, sep='\s+', names=list_magcol, index_col=0)
     data_df = data_df.replace('INDEF', np.nan)
     data_df[['MAG_1', 'MAG_2', 'ERR_1', 'ERR_2']] = data_df[['MAG_1', 'MAG_2', 'ERR_1', 'ERR_2']].astype('float64')
     data_df = data_df.dropna(how='any')
@@ -686,7 +691,6 @@ def calculate_colormag(file_mag):
 # ------------------------------------------------------------------------------------------------------------------- #
 # MAG Files To Be Used In Determining True Secondary Standard Magnitudes
 # ------------------------------------------------------------------------------------------------------------------- #
-std_matrix = M67
 ctext_magstd = 'ca_' + day_std + '_*M67*.mag.2'
 file_standard = 'output_M67' + day_std + '_mag2'
 
@@ -720,8 +724,8 @@ display_text("Beta Values Were Written Onto Files 'OUTPUT_betamag' and 'OUTPUT_b
 # ------------------------------------------------------------------------------------------------------------------- #
 # Calculates Mean And STDEV of Beta For V-Band Magnitude And Color Terms
 # ------------------------------------------------------------------------------------------------------------------- #
-net_beta = pd.Series()
-net_err = pd.Series()
+net_beta = pd.Series(dtype='float64')
+net_err = pd.Series(dtype='float64')
 
 for column in betamag_df:
     tempmag = reject_series(betamag_df[column])
@@ -769,6 +773,6 @@ for band in filters:
     errval = trueerr_df[band].apply(lambda x: "{:.2f}".format(x) if type(x) != str else '{:s}'.format(x))
     comb_df[band] = magval + r'$\pm' + errval
 
-comb_df.reset_index().to_latex('_SecStdMag.tex', escape=False, index=False)
+comb_df.reset_index().style.to_latex('_SecStdMag.tex')
 display_text("True Secondary Standard Magnitudes Have Been Written Onto A Latex File")
 # ------------------------------------------------------------------------------------------------------------------- #
